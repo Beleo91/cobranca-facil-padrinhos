@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: cobranca-facil-padrinhos
+    env: python
+    region: ohio          # US East — mais próximo do Brasil com plano free
+    plan: free            # Altere para 'starter' ($7/mês) para 24/7 sem sleep
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+    healthCheckPath: /api/health
+
+    envVars:
+      - key: ASAAS_API_KEY
+        sync: false          # Inserir manualmente no painel do Render
+      - key: ASAAS_PIX_KEY
+        sync: false
+      - key: ASAAS_BASE_URL
+        value: https://www.asaas.com/api/v3
+      - key: SECRET_KEY
+        generateValue: true  # Gerado automaticamente pelo Render
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"        # 24 horas
+      - key: ENVIRONMENT
+        value: production
+
+    disk:
+      name: sqlite-data
+      mountPath: /app/backend/data
+      sizeGB: 1

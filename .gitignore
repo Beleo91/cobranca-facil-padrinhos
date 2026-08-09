@@ -1,0 +1,50 @@
+# Arquivos de ambiente e secrets
+.env
+.env.local
+.env.production
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# SQLite database (dados sensíveis de produção)
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.db
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Análises temporárias
+bytecode_analysis.txt
+dis_all.txt
+dis_all_utf8.txt
+
+# Node
+node_modules/

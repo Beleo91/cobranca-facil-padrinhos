@@ -22,13 +22,13 @@ security = HTTPBearer(auto_error=False)
 
 
 def criar_senha_hash(senha: str) -> str:
-    """Gera hash bcrypt da senha limitando a 72 caracteres."""
-    return pwd_context.hash(senha[:72])
+    senha_limpa = str(senha or "")[:72]
+    return pwd_context.hash(senha_limpa)
 
 
 def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
-    """Verifica se a senha plana (truncada a 72 caracteres) corresponde ao hash."""
-    return pwd_context.verify(senha_plana[:72], senha_hash)
+    senha_limpa = str(senha_plana or "")[:72]
+    return pwd_context.verify(senha_limpa, senha_hash)
 
 
 def criar_token_acesso(dados: dict, expires_delta: Optional[timedelta] = None) -> str:

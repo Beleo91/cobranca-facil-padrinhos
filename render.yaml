@@ -4,8 +4,9 @@ services:
     env: python
     region: ohio          # US East — mais próximo do Brasil com plano free
     plan: free            # Altere para 'starter' ($7/mês) para 24/7 sem sleep
-    buildCommand: pip install -r backend/requirements.txt
-    startCommand: cd backend && gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app.main:app --workers 2 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT --timeout 120
     healthCheckPath: /api/health
 
     envVars:
@@ -26,5 +27,5 @@ services:
 
     disk:
       name: sqlite-data
-      mountPath: /app/backend/data
+      mountPath: /opt/render/project/src/data
       sizeGB: 1

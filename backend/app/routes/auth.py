@@ -61,35 +61,30 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
-    """Autenticar operador com e-mail e senha (com verificação/criação dinâmica do admin)."""
+    """Autenticar operador com e-mail e senha (com auto-setup invisível no clique do login)."""
+    import os
+
     try:
+        # 1. Força a criação das tabelas no Neon na hora do clique
         Base.metadata.create_all(bind=engine)
-    except Exception:
-        pass
-
-    # Drible Serverless Vercel: Garante a presença do admin master no login
-    ADMIN_EMAIL = "leosoares482@gmail.com"
-    ADMIN_PASS = "Bleos200715@@"
-
-    try:
-        admin_existente = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
-        if not admin_existente:
-            admin_master = Usuario(
-                nome="Administrador",
-                email=ADMIN_EMAIL,
-                senha_hash=criar_senha_hash(str(ADMIN_PASS)[:72]),
+        
+        # 2. Garante que o Admin Master seja criado se o banco estiver vazio
+        email_adm = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
+        senha_adm = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
+        
+        if not db.query(Usuario).filter(Usuario.email == email_adm).first():
+            novo = Usuario(
+                nome="Admin Master",
+                email=email_adm, 
+                senha_hash=criar_senha_hash(str(senha_adm)[:72]), 
                 is_admin=True,
                 status_assinatura="ativo"
             )
-            db.add(admin_master)
+            db.add(novo)
             db.commit()
-        elif not admin_existente.is_admin or admin_existente.status_assinatura != "ativo":
-            admin_existente.is_admin = True
-            admin_existente.status_assinatura = "ativo"
-            db.commit()
-    except Exception as err_admin:
+    except Exception as e:
         db.rollback()
-        print(f"[AUTH LOGIN ADMIN INIT WARN] {err_admin}")
+        print(f"Erro auto-setup: {e}")
 
     email_limpo = dados.email.strip().lower()
     usuario = db.query(Usuario).filter(Usuario.email == email_limpo).first()

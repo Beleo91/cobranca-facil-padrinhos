@@ -17,22 +17,23 @@ for p in (ROOT_DIR, BACKEND_DIR, BASE_DIR):
         sys.path.insert(0, p)
 
 IS_VERCEL = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
+is_vercel = IS_VERCEL
 
-if IS_VERCEL:
-    DB_PATH = "/tmp/emprestimos.db"
+if is_vercel:
+    db_path = "/tmp/emprestimos.db"
 else:
-    if os.path.isdir("/opt/render/project/src"):
-        DATA_DIR = "/opt/render/project/src/data"
-    else:
-        DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
     try:
-        os.makedirs(DATA_DIR, exist_ok=True)
+        if os.path.isdir("/opt/render/project/src"):
+            data_dir = "/opt/render/project/src/data"
+        else:
+            data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+        os.makedirs(data_dir, exist_ok=True)
+        db_path = os.path.join(data_dir, "emprestimos.db")
     except Exception:
-        DATA_DIR = "/tmp"
-        os.makedirs(DATA_DIR, exist_ok=True)
-    DB_PATH = os.path.join(DATA_DIR, "emprestimos.db")
+        db_path = "/tmp/emprestimos.db"
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{DB_PATH}"
+DB_PATH = db_path
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{db_path}"
 
 # Fix para PostgreSQL (postgres:// vs postgresql://)
 if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):

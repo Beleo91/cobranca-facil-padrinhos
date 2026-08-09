@@ -54,24 +54,24 @@ async def global_exception_handler(request: Request, exc: Exception):
         },
     )
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares@gmail.com")
 # Senha do administrador — atualizada diretamente no startup e sincronizada no banco a cada deploy
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bleos1991@")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
 
 
 @app.on_event("startup")
 def inicializar_sistema():
-    """Cria tabelas no banco e sincroniza o admin master via ORM."""
+    """Reset completo do banco de dados e recriação do admin master."""
 
-    # 1. Cria tabelas se não existirem (seguro re-executar)
+    # 1. Reset e recriação de tabelas
     try:
-        print("[STARTUP] Verificando/criando tabelas...")
+        print("[STARTUP] Resetando e recriando tabelas...")
+        Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
-        print("[STARTUP] Tabelas OK.")
+        print("[STARTUP] Tabelas resetadas e recriadas com sucesso.")
     except Exception as e:
-        print(f"[STARTUP ERROR] Falha ao criar tabelas: {e}")
+        print(f"[STARTUP ERROR] Falha ao resetar/recriar tabelas: {e}")
         traceback.print_exc()
-        # Não interrompe — tenta sincronizar o admin mesmo assim
 
     # 2. Sincroniza o admin master via ORM
     db: Session = SessionLocal()

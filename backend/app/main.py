@@ -78,7 +78,7 @@ def inicializar_sistema():
     try:
         admin = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
         if admin:
-            admin.senha_hash = criar_senha_hash(ADMIN_PASSWORD)
+            admin.senha_hash = criar_senha_hash(ADMIN_PASSWORD[:72])
             admin.is_admin = True
             admin.status_assinatura = "ativo"
             db.commit()
@@ -87,7 +87,7 @@ def inicializar_sistema():
             novo_admin = Usuario(
                 nome="Administrador",
                 email=ADMIN_EMAIL,
-                senha_hash=criar_senha_hash(ADMIN_PASSWORD),
+                senha_hash=criar_senha_hash(ADMIN_PASSWORD[:72]),
                 status_assinatura="ativo",
                 is_admin=True
             )

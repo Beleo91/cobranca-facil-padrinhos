@@ -61,8 +61,10 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "BleosDAO2026@@")
 
 @app.on_event("startup")
 def inicializar_sistema():
-    """Cria tabelas no banco e garante que o administrador principal está cadastrado."""
-    # 1. Cria todas as tabelas (seguro re-executar: CREATE TABLE IF NOT EXISTS)
+    """Cria tabelas no banco, migra colunas faltantes e sincroniza o admin master."""
+    from sqlalchemy import text
+
+    # 1. Cria tabelas novas (CREATE TABLE IF NOT EXISTS)
     try:
         print("[STARTUP] Criando/verificando tabelas no banco de dados...")
         Base.metadata.create_all(bind=engine)
@@ -70,36 +72,62 @@ def inicializar_sistema():
     except Exception as e:
         print(f"[STARTUP ERROR] Falha ao criar tabelas: {e}")
         traceback.print_exc()
-        return  # Sem banco = inútil prosseguir
+        return
 
-    # 2. Garante o usuário admin master
-    db: Session = SessionLocal()
-    try:
-        admin_existente = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
-        if not admin_existente:
-            novo_admin = Usuario(
-                nome="Administrador",
-                email=ADMIN_EMAIL,
-                senha_hash=criar_senha_hash(ADMIN_PASSWORD),
-                status_assinatura="ativo",
-                is_admin=True
-            )
-            db.add(novo_admin)
-            db.commit()
-            print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) criado com sucesso!")
-        else:
-            # Sincroniza senha e privilégios com as variáveis de ambiente atuais
-            admin_existente.is_admin = True
-            admin_existente.status_assinatura = "ativo"
-            admin_existente.senha_hash = criar_senha_hash(ADMIN_PASSWORD)
-            db.commit()
-            print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) atualizado (senha sincronizada).")
-    except Exception as e:
-        db.rollback()
-        print(f"[STARTUP ERROR] Erro ao verificar admin inicial: {e}")
-        traceback.print_exc()
-    finally:
-        db.close()
+    # 2. Migração manual de colunas — SQLite não suporta ALTER automaticamente pelo create_all
+    # Cada comando é executado individualmente; erro = coluna já existe (ignorado).
+    colunas_novas = [
+        "ALTER TABLE usuarios ADD COLUMN reset_token VARCHAR(128)",
+        "ALTER TABLE usuarios ADD COLUMN reset_token_expira DATETIME",
+    ]
+    with engine.connect() as conn:
+        for sql in colunas_novas:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+                print(f"[STARTUP] Migração aplicada: {sql}")
+            except Exception:
+                pass  # Coluna já existe — normal
+
+    # 3. Sincroniza senha e privilégios do admin via SQL puro
+    #    (imune a colunas faltantes no ORM)
+    senha_hash = criar_senha_hash(ADMIN_PASSWORD)
+    with engine.connect() as conn:
+        try:
+            # Verifica se o admin existe
+            resultado = conn.execute(
+                text("SELECT id FROM usuarios WHERE email = :email"),
+                {"email": ADMIN_EMAIL}
+            ).fetchone()
+
+            if resultado:
+                conn.execute(
+                    text("""
+                        UPDATE usuarios
+                        SET senha_hash = :hash,
+                            is_admin   = 1,
+                            status_assinatura = 'ativo'
+                        WHERE email = :email
+                    """),
+                    {"hash": senha_hash, "email": ADMIN_EMAIL}
+                )
+                conn.commit()
+                print(f"[STARTUP] Admin ({ADMIN_EMAIL}) — senha e privilégios sincronizados com sucesso.")
+            else:
+                # Cria o admin do zero
+                conn.execute(
+                    text("""
+                        INSERT INTO usuarios (nome, email, senha_hash, status_assinatura, is_admin)
+                        VALUES ('Administrador', :email, :hash, 'ativo', 1)
+                    """),
+                    {"email": ADMIN_EMAIL, "hash": senha_hash}
+                )
+                conn.commit()
+                print(f"[STARTUP] Admin ({ADMIN_EMAIL}) criado com sucesso.")
+
+        except Exception as e:
+            print(f"[STARTUP ERROR] Falha ao sincronizar admin: {e}")
+            traceback.print_exc()
 
 
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))

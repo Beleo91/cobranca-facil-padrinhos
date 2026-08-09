@@ -127,6 +127,7 @@ def health_check():
 
 
 @app.get("/api/setup")
+@app.get("/setup")
 def setup_database(db: Session = Depends(get_db)):
     try:
         # Força a criação de todas as tabelas no PostgreSQL

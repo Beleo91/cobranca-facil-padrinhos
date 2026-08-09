@@ -14,13 +14,13 @@ for p in (ROOT_DIR, BACKEND_DIR, BASE_DIR):
         sys.path.insert(0, p)
 
 import traceback
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.database import engine, Base, SessionLocal
+from app.database import engine, Base, SessionLocal, get_db
 from app.models import Usuario  # noqa: F401  — garante que os models são registrados no Base
 from app.services.auth_service import criar_senha_hash
 from app.routes import clientes, emprestimos, dashboard, auth, admin, pagamentos
@@ -124,3 +124,34 @@ if os.path.exists(FRONTEND_DIR):
 def health_check():
     """Verificar se a API está online."""
     return {"status": "ok", "message": "API Gestão de Empréstimos SaaS online!"}
+
+
+@app.get("/api/setup")
+def setup_database(db: Session = Depends(get_db)):
+    try:
+        # Força a criação de todas as tabelas no PostgreSQL
+        Base.metadata.create_all(bind=engine)
+        
+        # Pega as credenciais das variáveis de ambiente
+        email = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
+        senha = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
+        
+        # Verifica se o admin já existe
+        admin = db.query(Usuario).filter(Usuario.email == email).first()
+        if not admin:
+            novo_admin = Usuario(
+                nome="Admin Master",
+                email=email,
+                senha_hash=criar_senha_hash(str(senha)[:72]),
+                is_admin=True,
+                status_assinatura="ativo"
+            )
+            db.add(novo_admin)
+            db.commit()
+            return {"status": "sucesso", "mensagem": "Tabelas e Admin mestre criados com sucesso!"}
+        
+        return {"status": "aviso", "mensagem": "Banco já estava configurado e Admin já existe."}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"status": "erro", "mensagem": f"Erro ao configurar o banco: {str(e)}"}

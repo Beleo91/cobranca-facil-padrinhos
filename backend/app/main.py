@@ -54,22 +54,21 @@ async def global_exception_handler(request: Request, exc: Exception):
         },
     )
 
-ADMIN_EMAIL = "leosoares482@gmail.com"
-ADMIN_PASSWORD = "Bleos200715@@"
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bleos1991@")
 
 
 @app.on_event("startup")
 def inicializar_sistema():
-    """Reset completo do banco de dados e recriação do admin master."""
+    """Cria tabelas no banco e sincroniza o admin master via ORM."""
 
-    # 1. Reset e recriação de tabelas
+    # 1. Cria tabelas se não existirem
     try:
-        print("[STARTUP] Resetando e recriando tabelas...")
-        Base.metadata.drop_all(bind=engine)
+        print("[STARTUP] Verificando/criando tabelas...")
         Base.metadata.create_all(bind=engine)
-        print("[STARTUP] Tabelas resetadas e recriadas com sucesso.")
+        print("[STARTUP] Tabelas OK.")
     except Exception as e:
-        print(f"[STARTUP ERROR] Falha ao resetar/recriar tabelas: {e}")
+        print(f"[STARTUP ERROR] Falha ao verificar/criar tabelas: {e}")
         traceback.print_exc()
 
     # 2. Sincroniza o admin master via ORM
@@ -77,22 +76,21 @@ def inicializar_sistema():
     try:
         admin = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
         if admin:
-            admin.senha_hash = criar_senha_hash(ADMIN_PASSWORD[:72])
+            admin.senha_hash = criar_senha_hash(ADMIN_PASSWORD)
             admin.is_admin = True
             admin.status_assinatura = "ativo"
-            db.commit()
             print(f"[STARTUP] Admin ({ADMIN_EMAIL}) — senha sincronizada com sucesso.")
         else:
-            novo_admin = Usuario(
+            admin = Usuario(
                 nome="Administrador",
                 email=ADMIN_EMAIL,
-                senha_hash=criar_senha_hash(ADMIN_PASSWORD[:72]),
-                status_assinatura="ativo",
-                is_admin=True
+                senha_hash=criar_senha_hash(ADMIN_PASSWORD),
+                is_admin=True,
+                status_assinatura="ativo"
             )
-            db.add(novo_admin)
-            db.commit()
+            db.add(admin)
             print(f"[STARTUP] Admin ({ADMIN_EMAIL}) criado com sucesso.")
+        db.commit()
     except Exception as e:
         db.rollback()
         print(f"[STARTUP ERROR] Falha ao sincronizar admin: {e}")

@@ -21,12 +21,17 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 
+def tratar_senha(senha: str) -> str:
+    s = str(senha or "")
+    return s.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
+
 def criar_senha_hash(senha: str) -> str:
-    return pwd_context.hash(str(senha or "")[:72])
+    return pwd_context.hash(tratar_senha(senha))
 
 
 def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
-    return pwd_context.verify(str(senha_plana or "")[:72], senha_hash)
+    return pwd_context.verify(tratar_senha(senha_plana), senha_hash)
 
 
 def criar_token_acesso(dados: dict, expires_delta: Optional[timedelta] = None) -> str:

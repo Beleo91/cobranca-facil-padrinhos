@@ -1,6 +1,8 @@
 """
-Rotas de Autenticação (Login, Cadastro, Perfil).
+Rotas de Autenticação (Login, Cadastro, Perfil, Recuperação de Senha).
 """
+import secrets
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -13,6 +15,7 @@ from app.services.auth_service import (
     criar_token_acesso,
     obter_usuario_atual
 )
+from app.services.email_service import enviar_email_recuperacao
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -64,3 +67,84 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
 def obter_perfil_atual(usuario_atual: Usuario = Depends(obter_usuario_atual)):
     """Obter dados do perfil do usuário autenticado."""
     return usuario_atual
+
+
+# ---------------------------------------------------------------------------
+# Recuperação de Senha
+# ---------------------------------------------------------------------------
+
+class EsqueciSenhaRequest:
+    pass  # Definido inline abaixo via Pydantic
+
+
+from pydantic import BaseModel, EmailStr
+
+class EsqueciSenhaBody(BaseModel):
+    email: str
+
+class RedefinirSenhaBody(BaseModel):
+    token: str
+    nova_senha: str
+
+
+@router.post("/esqueci-senha", status_code=200)
+def esqueci_senha(body: EsqueciSenhaBody, db: Session = Depends(get_db)):
+    """
+    Gera token de recuperação e envia e-mail com link.
+    Sempre retorna 200 para não revelar se o e-mail existe no sistema.
+    """
+    email_limpo = body.email.strip().lower()
+    usuario = db.query(Usuario).filter(Usuario.email == email_limpo).first()
+
+    msg_padrao = {"message": "Se este e-mail estiver cadastrado, você receberá as instruções em instantes."}
+
+    if not usuario:
+        # Não revelamos que o e-mail não existe (segurança)
+        return msg_padrao
+
+    # Gera token seguro e armazena hash no banco
+    token_raw = secrets.token_urlsafe(48)   # 64 chars URL-safe
+    usuario.reset_token = token_raw
+    usuario.reset_token_expira = datetime.utcnow() + timedelta(minutes=30)
+    db.commit()
+
+    # Envia e-mail (ou loga no servidor se SMTP não configurado)
+    enviar_email_recuperacao(
+        destinatario=usuario.email,
+        nome=usuario.nome,
+        token=token_raw
+    )
+
+    return msg_padrao
+
+
+@router.post("/redefinir-senha", status_code=200)
+def redefinir_senha(body: RedefinirSenhaBody, db: Session = Depends(get_db)):
+    """
+    Valida o token e redefine a senha do usuário.
+    """
+    if not body.token or len(body.token) < 10:
+        raise HTTPException(status_code=400, detail="Token inválido.")
+
+    if not body.nova_senha or len(body.nova_senha) < 4:
+        raise HTTPException(status_code=400, detail="A nova senha deve ter pelo menos 4 caracteres.")
+
+    usuario = db.query(Usuario).filter(Usuario.reset_token == body.token).first()
+
+    if not usuario:
+        raise HTTPException(status_code=400, detail="Token inválido ou já utilizado.")
+
+    if usuario.reset_token_expira is None or datetime.utcnow() > usuario.reset_token_expira:
+        # Limpa token expirado
+        usuario.reset_token = None
+        usuario.reset_token_expira = None
+        db.commit()
+        raise HTTPException(status_code=400, detail="Token expirado. Solicite um novo link de recuperação.")
+
+    # Atualiza senha e limpa token
+    usuario.senha_hash = criar_senha_hash(body.nova_senha)
+    usuario.reset_token = None
+    usuario.reset_token_expira = None
+    db.commit()
+
+    return {"message": "Senha redefinida com sucesso! Você já pode fazer login."}

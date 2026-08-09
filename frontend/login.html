@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#10b981">
   <meta name="description" content="Gerencie empréstimos e carnês. Acesse sua conta ou cadastre-se gratuitamente.">
 
-  <title>Login &amp; Cadastro - Cobrança Fácil Padrinhos</title>
+  <title>Login & Cadastro - Cobrança Fácil Padrinhos</title>
 
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
@@ -26,7 +26,10 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+
   <style>
+    /* ── Base ── */
+    *, *::before, *::after { box-sizing: border-box; }
     body {
       display: flex;
       align-items: center;
@@ -37,6 +40,8 @@
       padding: 1.5rem;
       font-family: 'Inter', sans-serif;
     }
+
+    /* ── Card principal ── */
     .auth-card {
       width: 100%;
       max-width: 440px;
@@ -67,6 +72,8 @@
       color: #f8fafc;
       letter-spacing: -0.5px;
     }
+
+    /* ── Abas ── */
     .auth-tabs {
       display: flex;
       background: rgba(30, 41, 59, 0.6);
@@ -93,15 +100,12 @@
       color: #ffffff;
       box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
-    .auth-form {
-      display: none;
-    }
-    .auth-form.active {
-      display: block;
-    }
-    .form-group {
-      margin-bottom: 1.25rem;
-    }
+
+    /* ── Formulários ── */
+    .auth-form { display: none; }
+    .auth-form.active { display: block; }
+
+    .form-group { margin-bottom: 1.25rem; }
     .form-group label {
       display: block;
       font-size: 0.85rem;
@@ -117,7 +121,6 @@
       border-radius: 8px;
       color: #f8fafc;
       font-size: 0.95rem;
-      box-sizing: border-box;
       transition: border 0.2s;
     }
     .form-control:focus {
@@ -125,6 +128,8 @@
       border-color: var(--primary, #10b981);
       box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
     }
+
+    /* ── Botão principal ── */
     .btn-submit {
       width: 100%;
       padding: 0.85rem;
@@ -139,13 +144,11 @@
       transition: transform 0.1s, box-shadow 0.2s;
       box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
     }
-    .btn-submit:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
-    }
-    .btn-submit:active {
-      transform: translateY(0);
-    }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5); }
+    .btn-submit:active { transform: translateY(0); }
+    .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Alertas ── */
     .auth-alert {
       display: none;
       padding: 0.75rem 1rem;
@@ -164,70 +167,280 @@
       border: 1px solid rgba(16, 185, 129, 0.4);
       color: #6ee7b7;
     }
+
+    /* ── Link "Esqueceu a senha?" ── */
+    .forgot-link {
+      display: block;
+      text-align: right;
+      margin-top: -0.6rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+      color: #10b981;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .forgot-link:hover { color: #6ee7b7; text-decoration: underline; }
+
+    /* ── Trial badge ── */
     .trial-badge-info {
       text-align: center;
       margin-top: 1.5rem;
       font-size: 0.8rem;
       color: #64748b;
     }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      animation: fadeIn 0.2s ease;
+    }
+    .modal-backdrop.open { display: flex; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    /* ── Caixa da modal ── */
+    .modal-box {
+      width: 100%;
+      max-width: 420px;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7);
+      animation: slideUp 0.25s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-box h3 {
+      color: #f8fafc;
+      font-size: 1.15rem;
+      margin: 0 0 0.5rem;
+    }
+    .modal-box p {
+      color: #94a3b8;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      margin: 0 0 1.5rem;
+    }
+    .modal-alert {
+      display: none;
+      padding: 0.65rem 0.9rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      margin-bottom: 1rem;
+      line-height: 1.4;
+    }
+    .modal-alert-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .modal-alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+    }
+    .modal-footer {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1.25rem;
+    }
+    .btn-secondary {
+      flex: 1;
+      padding: 0.75rem;
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-secondary:hover { background: rgba(30, 41, 59, 1); }
+    .btn-primary-modal {
+      flex: 2;
+      padding: 0.75rem;
+      background: linear-gradient(135deg, #10b981, #059669);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+      transition: transform 0.1s, box-shadow 0.2s;
+    }
+    .btn-primary-modal:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(16, 185, 129, 0.5); }
+    .btn-primary-modal:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    /* ── Tela de redefinição (substitui o card login quando há ?reset_token) ── */
+    #reset-screen { display: none; }
+    #reset-screen.active { display: block; }
+    #main-auth { display: block; }
+    #main-auth.hidden { display: none; }
   </style>
 </head>
 <body>
 
+  <!-- ═══════════════════════════════════════════════════════
+       CARD PRINCIPAL (Login / Cadastro)
+  ═══════════════════════════════════════════════════════ -->
   <div class="auth-card">
+
+    <!-- Cabeçalho da marca -->
     <div class="auth-brand">
       <div class="auth-brand-icon">💰</div>
       <div class="auth-brand-title">Cobrança Fácil Padrinhos</div>
     </div>
 
-    <div class="auth-tabs">
-      <button type="button" class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
-      <button type="button" class="auth-tab" onclick="switchAuthTab('register')">Criar Conta</button>
+    <!-- ── TELA DE REDEFINIÇÃO DE SENHA (quando URL tem ?reset_token) ── -->
+    <div id="reset-screen">
+      <h3 style="color:#f8fafc;font-size:1.1rem;margin:0 0 0.5rem;">🔑 Criar Nova Senha</h3>
+      <p style="color:#94a3b8;font-size:0.85rem;line-height:1.6;margin:0 0 1.5rem;">
+        Defina sua nova senha abaixo. Ela deve ter pelo menos 4 caracteres.
+      </p>
+      <div id="reset-alert" class="auth-alert"></div>
+      <form id="form-reset" onsubmit="handleRedefinirSenha(event)">
+        <div class="form-group">
+          <label>Nova Senha *</label>
+          <input type="password" id="reset-nova-senha" class="form-control"
+                 placeholder="Mínimo 4 caracteres" minlength="4" required>
+        </div>
+        <div class="form-group">
+          <label>Confirmar Nova Senha *</label>
+          <input type="password" id="reset-confirma-senha" class="form-control"
+                 placeholder="Repita a nova senha" minlength="4" required>
+        </div>
+        <button type="submit" class="btn-submit" id="btn-reset">Redefinir Senha</button>
+      </form>
+      <p style="text-align:center;margin-top:1.25rem;">
+        <a href="login.html" style="color:#10b981;font-size:0.85rem;text-decoration:none;">
+          ← Voltar para o login
+        </a>
+      </p>
     </div>
 
-    <div id="auth-alert" class="auth-alert"></div>
+    <!-- ── TELA PRINCIPAL (Login / Cadastro) ── -->
+    <div id="main-auth">
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+        <button type="button" class="auth-tab" onclick="switchAuthTab('register')">Criar Conta</button>
+      </div>
 
-    <!-- FORM LOGIN -->
-    <form id="form-login" class="auth-form active" onsubmit="handleLogin(event)">
-      <div class="form-group">
-        <label>E-mail *</label>
-        <input type="email" id="login-email" class="form-control" placeholder="seuemail@exemplo.com" required>
-      </div>
-      <div class="form-group">
-        <label>Senha *</label>
-        <input type="password" id="login-senha" class="form-control" placeholder="••••••••" required>
-      </div>
-      <button type="submit" class="btn-submit">Entrar no Sistema</button>
-    </form>
+      <div id="auth-alert" class="auth-alert"></div>
 
-    <!-- FORM REGISTRO -->
-    <form id="form-register" class="auth-form" onsubmit="handleRegister(event)">
-      <div class="form-group">
-        <label>Nome Completo *</label>
-        <input type="text" id="reg-nome" class="form-control" placeholder="Ex: Carlos Silva" required>
-      </div>
-      <div class="form-group">
-        <label>E-mail *</label>
-        <input type="email" id="reg-email" class="form-control" placeholder="seuemail@exemplo.com" required>
-      </div>
-      <div class="form-group">
-        <label>Senha (mínimo 4 caracteres) *</label>
-        <input type="password" id="reg-senha" class="form-control" placeholder="••••••••" minlength="4" required>
-      </div>
-      <button type="submit" class="btn-submit">Cadastrar Gratuitamente</button>
-    </form>
+      <!-- FORM LOGIN -->
+      <form id="form-login" class="auth-form active" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label>E-mail *</label>
+          <input type="email" id="login-email" class="form-control"
+                 placeholder="seuemail@exemplo.com" required>
+        </div>
+        <div class="form-group">
+          <label>Senha *</label>
+          <input type="password" id="login-senha" class="form-control"
+                 placeholder="••••••••" required>
+        </div>
+
+        <!-- ★ Link "Esqueceu a senha?" ★ -->
+        <a class="forgot-link" id="btn-esqueci-senha" onclick="abrirModalEsqueciSenha()">
+          Esqueceu a senha?
+        </a>
+
+        <button type="submit" class="btn-submit" id="btn-login">Entrar no Sistema</button>
+      </form>
+
+      <!-- FORM REGISTRO -->
+      <form id="form-register" class="auth-form" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label>Nome Completo *</label>
+          <input type="text" id="reg-nome" class="form-control"
+                 placeholder="Ex: Carlos Silva" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail *</label>
+          <input type="email" id="reg-email" class="form-control"
+                 placeholder="seuemail@exemplo.com" required>
+        </div>
+        <div class="form-group">
+          <label>Senha (mínimo 4 caracteres) *</label>
+          <input type="password" id="reg-senha" class="form-control"
+                 placeholder="••••••••" minlength="4" required>
+        </div>
+        <button type="submit" class="btn-submit" id="btn-register">Cadastrar Gratuitamente</button>
+      </form>
+    </div><!-- /main-auth -->
 
     <div class="trial-badge-info">
       🎁 <strong>Teste Grátis:</strong> Cadastre até 2 clientes gratuitamente sem necessidade de cartão de crédito.
     </div>
+  </div><!-- /auth-card -->
+
+
+  <!-- ═══════════════════════════════════════════════════════
+       MODAL — Esqueceu a Senha?
+  ═══════════════════════════════════════════════════════ -->
+  <div id="modal-esqueci" class="modal-backdrop" role="dialog" aria-modal="true"
+       aria-labelledby="modal-esqueci-title" onclick="fecharModalEsqueciSenha(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <h3 id="modal-esqueci-title">🔑 Recuperar Senha</h3>
+      <p>
+        Informe o e-mail cadastrado na sua conta. Se ele existir no sistema,
+        você receberá um link para criar uma nova senha válido por <strong>30 minutos</strong>.
+      </p>
+
+      <div id="modal-alert" class="modal-alert"></div>
+
+      <form id="form-esqueci" onsubmit="handleEsqueciSenha(event)">
+        <div class="form-group">
+          <label>E-mail cadastrado *</label>
+          <input type="email" id="esqueci-email" class="form-control"
+                 placeholder="seuemail@exemplo.com" required autocomplete="email">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" onclick="fecharModalEsqueciSenha()">Cancelar</button>
+          <button type="submit" class="btn-primary-modal" id="btn-enviar-recuperacao">
+            Enviar Link
+          </button>
+        </div>
+      </form>
+    </div>
   </div>
 
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCRIPTS
+  ═══════════════════════════════════════════════════════ -->
   <script>
-    // Se já estiver autenticado, redireciona para o index
-    if (localStorage.getItem('token')) {
+    // ── Detecta ?reset_token na URL ─────────────────────────────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const RESET_TOKEN = urlParams.get('reset_token');
+
+    if (RESET_TOKEN) {
+      // Mostra a tela de redefinição, esconde login/cadastro
+      document.getElementById('reset-screen').classList.add('active');
+      document.getElementById('main-auth').classList.add('hidden');
+    } else if (localStorage.getItem('token')) {
+      // Já autenticado → redireciona
       window.location.href = 'index.html';
     }
 
+    // ── Alternância de abas ──────────────────────────────────────────────────
     function switchAuthTab(tab) {
       document.querySelectorAll('.auth-tab').forEach(el => el.classList.remove('active'));
       document.querySelectorAll('.auth-form').forEach(el => el.classList.remove('active'));
@@ -242,21 +455,65 @@
       }
     }
 
+    // ── Alertas da tela principal ────────────────────────────────────────────
     function showAlert(msg, type = 'danger') {
       const el = document.getElementById('auth-alert');
       el.className = `auth-alert auth-alert-${type}`;
       el.innerText = msg;
       el.style.display = 'block';
     }
-
     function hideAlert() {
       const el = document.getElementById('auth-alert');
       el.style.display = 'none';
     }
 
+    // ── Alertas da tela de reset ────────────────────────────────────────────
+    function showResetAlert(msg, type = 'danger') {
+      const el = document.getElementById('reset-alert');
+      el.className = `auth-alert auth-alert-${type}`;
+      el.innerText = msg;
+      el.style.display = 'block';
+    }
+
+    // ── Alertas da modal ────────────────────────────────────────────────────
+    function showModalAlert(msg, type = 'danger') {
+      const el = document.getElementById('modal-alert');
+      el.className = `modal-alert modal-alert-${type}`;
+      el.innerText = msg;
+      el.style.display = 'block';
+    }
+    function hideModalAlert() {
+      const el = document.getElementById('modal-alert');
+      el.style.display = 'none';
+    }
+
+    // ── Abrir / fechar modal ────────────────────────────────────────────────
+    function abrirModalEsqueciSenha() {
+      document.getElementById('modal-esqueci').classList.add('open');
+      hideModalAlert();
+      document.getElementById('esqueci-email').value =
+        document.getElementById('login-email').value || '';
+      setTimeout(() => document.getElementById('esqueci-email').focus(), 100);
+    }
+    function fecharModalEsqueciSenha(e) {
+      if (e && e.target !== document.getElementById('modal-esqueci')) return;
+      document.getElementById('modal-esqueci').classList.remove('open');
+      document.getElementById('form-esqueci').reset();
+      hideModalAlert();
+    }
+    // Fechar com Esc
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') fecharModalEsqueciSenha({ target: document.getElementById('modal-esqueci') });
+    });
+
+    // ── Login ────────────────────────────────────────────────────────────────
     async function handleLogin(e) {
       e.preventDefault();
       hideAlert();
+      const btn = document.getElementById('btn-login');
+      btn.disabled = true;
+      btn.textContent = 'Entrando...';
+
       const email = document.getElementById('login-email').value.trim();
       const senha = document.getElementById('login-senha').value;
 
@@ -266,24 +523,28 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, senha })
         });
-
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || 'Falha ao efetuar login');
-        }
+        if (!res.ok) throw new Error(data.detail || 'Falha ao efetuar login');
 
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.usuario));
         window.location.href = 'index.html';
       } catch (err) {
         showAlert(err.message, 'danger');
+        btn.disabled = false;
+        btn.textContent = 'Entrar no Sistema';
       }
     }
 
+    // ── Cadastro ─────────────────────────────────────────────────────────────
     async function handleRegister(e) {
       e.preventDefault();
       hideAlert();
-      const nome = document.getElementById('reg-nome').value.trim();
+      const btn = document.getElementById('btn-register');
+      btn.disabled = true;
+      btn.textContent = 'Cadastrando...';
+
+      const nome  = document.getElementById('reg-nome').value.trim();
       const email = document.getElementById('reg-email').value.trim();
       const senha = document.getElementById('reg-senha').value;
 
@@ -293,17 +554,92 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nome, email, senha })
         });
-
         const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || 'Falha no cadastro');
-        }
+        if (!res.ok) throw new Error(data.detail || 'Falha no cadastro');
 
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('user', JSON.stringify(data.usuario));
         window.location.href = 'index.html';
       } catch (err) {
         showAlert(err.message, 'danger');
+        btn.disabled = false;
+        btn.textContent = 'Cadastrar Gratuitamente';
+      }
+    }
+
+    // ── Esqueceu a senha ─────────────────────────────────────────────────────
+    async function handleEsqueciSenha(e) {
+      e.preventDefault();
+      hideModalAlert();
+      const btn = document.getElementById('btn-enviar-recuperacao');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+
+      const email = document.getElementById('esqueci-email').value.trim();
+
+      try {
+        const res = await fetch('/api/auth/esqueci-senha', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showModalAlert(
+            data.message || 'Se este e-mail estiver cadastrado, você receberá as instruções em instantes.',
+            'success'
+          );
+          document.getElementById('form-esqueci').reset();
+          // Desabilita o botão após sucesso para evitar spam
+          btn.textContent = 'Enviado ✓';
+        } else {
+          throw new Error(data.detail || 'Erro ao solicitar recuperação.');
+        }
+      } catch (err) {
+        showModalAlert(err.message, 'danger');
+        btn.disabled = false;
+        btn.textContent = 'Enviar Link';
+      }
+    }
+
+    // ── Redefinir senha (tela de reset via token na URL) ────────────────────
+    async function handleRedefinirSenha(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-reset');
+      const novaSenha    = document.getElementById('reset-nova-senha').value;
+      const confirmaSenha = document.getElementById('reset-confirma-senha').value;
+
+      if (novaSenha !== confirmaSenha) {
+        showResetAlert('As senhas não coincidem. Verifique e tente novamente.', 'danger');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Salvando...';
+
+      try {
+        const res = await fetch('/api/auth/redefinir-senha', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: RESET_TOKEN, nova_senha: novaSenha })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          showResetAlert(
+            (data.message || 'Senha redefinida com sucesso!') + ' Redirecionando para o login...',
+            'success'
+          );
+          document.getElementById('form-reset').style.display = 'none';
+          setTimeout(() => { window.location.href = 'login.html'; }, 2800);
+        } else {
+          throw new Error(data.detail || 'Erro ao redefinir senha.');
+        }
+      } catch (err) {
+        showResetAlert(err.message, 'danger');
+        btn.disabled = false;
+        btn.textContent = 'Redefinir Senha';
       }
     }
   </script>

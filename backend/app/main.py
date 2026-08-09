@@ -54,8 +54,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         },
     )
 
-ADMIN_EMAIL = "leosoares482@gmail.com"
-ADMIN_PASSWORD = "Bleos200715@@"
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
+# Senha lida da variável de ambiente — altere no painel do Render sem precisar de novo deploy de código
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Padrinhos@2026!")
 
 
 @app.on_event("startup")
@@ -69,7 +70,7 @@ def inicializar_sistema():
     except Exception as e:
         print(f"[STARTUP ERROR] Falha ao criar tabelas: {e}")
         traceback.print_exc()
-        return  # Sem banco = inutil prosseguir
+        return  # Sem banco = inútil prosseguir
 
     # 2. Garante o usuário admin master
     db: Session = SessionLocal()
@@ -87,10 +88,12 @@ def inicializar_sistema():
             db.commit()
             print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) criado com sucesso!")
         else:
+            # Sincroniza senha e privilégios com as variáveis de ambiente atuais
             admin_existente.is_admin = True
             admin_existente.status_assinatura = "ativo"
+            admin_existente.senha_hash = criar_senha_hash(ADMIN_PASSWORD)
             db.commit()
-            print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) atualizado!")
+            print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) atualizado (senha sincronizada).")
     except Exception as e:
         db.rollback()
         print(f"[STARTUP ERROR] Erro ao verificar admin inicial: {e}")

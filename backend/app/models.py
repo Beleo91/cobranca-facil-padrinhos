@@ -19,6 +19,9 @@ class Usuario(Base):
     is_admin = Column(Boolean, default=False, nullable=False)
     criado_em = Column(DateTime, default=datetime.utcnow)
     ultimo_acesso = Column(DateTime, default=datetime.utcnow)
+    # Campos para recuperação de senha
+    reset_token = Column(String(128), nullable=True, index=True)
+    reset_token_expira = Column(DateTime, nullable=True)
 
     clientes = relationship("Cliente", back_populates="usuario", cascade="all, delete-orphan")
     emprestimos = relationship("Emprestimo", back_populates="usuario", cascade="all, delete-orphan")

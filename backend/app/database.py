@@ -18,41 +18,32 @@ for p in (ROOT_DIR, BACKEND_DIR, BASE_DIR):
 
 IS_VERCEL = bool(os.getenv("VERCEL") or os.getenv("VERCEL_ENV"))
 
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    if IS_VERCEL:
-        DB_PATH = "/tmp/emprestimos.db"
-        DATABASE_URL = f"sqlite:///{DB_PATH}"
-        print(f"[DATABASE] Ambientes Serverless Vercel. Usando SQLite temporário em: {DB_PATH}")
-    else:
-        if os.path.isdir("/opt/render/project/src"):
-            DATA_DIR = "/opt/render/project/src/data"
-        else:
-            DATA_DIR = os.path.join(ROOT_DIR, "data")
-        
-        try:
-            os.makedirs(DATA_DIR, exist_ok=True)
-        except Exception:
-            DATA_DIR = "/tmp"
-            os.makedirs(DATA_DIR, exist_ok=True)
-
-        DB_PATH = os.path.join(DATA_DIR, "emprestimos.db")
-        DATABASE_URL = f"sqlite:///{DB_PATH}"
-        print(f"[DATABASE] Usando SQLite em: {DB_PATH}")
+if IS_VERCEL:
+    DB_PATH = "/tmp/emprestimos.db"
 else:
-    print(f"[DATABASE] Usando banco externo (DATABASE_URL definida).")
+    if os.path.isdir("/opt/render/project/src"):
+        DATA_DIR = "/opt/render/project/src/data"
+    else:
+        DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+    except Exception:
+        DATA_DIR = "/tmp"
+        os.makedirs(DATA_DIR, exist_ok=True)
+    DB_PATH = os.path.join(DATA_DIR, "emprestimos.db")
+
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL") or f"sqlite:///{DB_PATH}"
 
 # Fix para PostgreSQL (postgres:// vs postgresql://)
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
 
 engine = create_engine(
-    DATABASE_URL,
+    SQLALCHEMY_DATABASE_URL,
     connect_args=connect_args,
-    pool_pre_ping=True,
+    pool_pre_ping=True
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

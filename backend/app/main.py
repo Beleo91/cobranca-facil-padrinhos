@@ -17,7 +17,7 @@ import traceback
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.database import engine, Base, SessionLocal
@@ -40,6 +40,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+async def root_redirect():
+    return RedirectResponse(url="/login.html")
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")

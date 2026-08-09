@@ -54,7 +54,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         },
     )
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares@gmail.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
 # Senha do administrador — atualizada diretamente no startup e sincronizada no banco a cada deploy
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
 

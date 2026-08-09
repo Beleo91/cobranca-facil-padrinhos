@@ -55,8 +55,8 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
-# Senha lida da variável de ambiente — altere no painel do Render sem precisar de novo deploy de código
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Padrinhos@2026!")
+# Senha do administrador — atualizada diretamente no startup e sincronizada no banco a cada deploy
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "BleosDAO2026@@")
 
 
 @app.on_event("startup")

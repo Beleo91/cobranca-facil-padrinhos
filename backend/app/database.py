@@ -6,38 +6,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# -----------------------------------------------------------------------
-# Resolução do diretório de dados — prioriza disco persistente do Render
-# -----------------------------------------------------------------------
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# 1) Variável explícita definida pelo usuário
-# 2) Disco persistente padrão do Render (mountPath configurado no render.yaml)
-# 3) Fallback local (desenvolvimento)
-DATA_DIR = (
-    os.getenv("SQLITE_DATA_DIR")
-    or "/opt/render/project/src/data"
-    if os.path.isdir("/opt/render/project/src")
-    else os.path.join(os.path.dirname(BASE_DIR), "data")
-)
-
+# Garantindo que a pasta do banco existe no Render
+DB_PATH = "/opt/render/project/src/data"
 try:
-    os.makedirs(DATA_DIR, exist_ok=True)
-except OSError as e:
-    # Se não conseguir criar no path preferido, cai para diretório local
-    print(f"[DATABASE] Aviso: não foi possível criar {DATA_DIR}: {e}. Usando diretório local.")
-    DATA_DIR = os.path.join(os.path.dirname(BASE_DIR), "data")
-    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(DB_PATH, exist_ok=True)
+except Exception:
+    # Se não estiver no Render, usa fallback local
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data")
+    os.makedirs(DB_PATH, exist_ok=True)
 
-print(f"[DATABASE] Diretório de dados: {DATA_DIR}")
-
-# -----------------------------------------------------------------------
-# URL de conexão — PostgreSQL (Supabase/Render Postgres) ou SQLite
-# -----------------------------------------------------------------------
 DATABASE_URL = os.getenv("DATABASE_URL")
-
 if not DATABASE_URL:
-    db_path = os.path.join(DATA_DIR, "emprestimos.db")
+    db_path = os.path.join(DB_PATH, "emprestimos.db")
     DATABASE_URL = f"sqlite:///{db_path}"
     print(f"[DATABASE] Usando SQLite em: {db_path}")
 else:

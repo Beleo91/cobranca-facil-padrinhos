@@ -35,13 +35,20 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
     usuario = Usuario(
         nome=dados.nome.strip(),
         email=email_limpo,
-        senha_hash=criar_senha_hash(dados.senha),
+        senha_hash=criar_senha_hash(str(dados.senha)[:72]),
         status_assinatura="trial",
         is_admin=False
     )
-    db.add(usuario)
-    db.commit()
-    db.refresh(usuario)
+    try:
+        db.add(usuario)
+        db.commit()
+        db.refresh(usuario)
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Erro ao registrar usuário. Verifique se o e-mail já está cadastrado."
+        )
 
     token = criar_token_acesso(dados={"sub": str(usuario.id), "email": usuario.email})
     return TokenResponse(access_token=token, token_type="bearer", usuario=usuario)

@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
+from app.database import get_db, engine, Base
 from app.models import Usuario
 from app.schemas import UsuarioCreate, UsuarioLogin, UsuarioResponse, TokenResponse
 from app.services.auth_service import (
@@ -23,6 +23,11 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 @router.post("/register", response_model=TokenResponse, status_code=201)
 def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
     """Cadastrar um novo operador no sistema."""
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
+
     email_limpo = dados.email.strip().lower()
 
     existente = db.query(Usuario).filter(Usuario.email == email_limpo).first()
@@ -56,7 +61,36 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
-    """Autenticar operador com e-mail e senha."""
+    """Autenticar operador com e-mail e senha (com verificação/criação dinâmica do admin)."""
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
+
+    # Drible Serverless Vercel: Garante a presença do admin master no login
+    ADMIN_EMAIL = "leosoares482@gmail.com"
+    ADMIN_PASS = "Bleos200715@@"
+
+    try:
+        admin_existente = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
+        if not admin_existente:
+            admin_master = Usuario(
+                nome="Administrador",
+                email=ADMIN_EMAIL,
+                senha_hash=criar_senha_hash(str(ADMIN_PASS)[:72]),
+                is_admin=True,
+                status_assinatura="ativo"
+            )
+            db.add(admin_master)
+            db.commit()
+        elif not admin_existente.is_admin or admin_existente.status_assinatura != "ativo":
+            admin_existente.is_admin = True
+            admin_existente.status_assinatura = "ativo"
+            db.commit()
+    except Exception as err_admin:
+        db.rollback()
+        print(f"[AUTH LOGIN ADMIN INIT WARN] {err_admin}")
+
     email_limpo = dados.email.strip().lower()
     usuario = db.query(Usuario).filter(Usuario.email == email_limpo).first()
 

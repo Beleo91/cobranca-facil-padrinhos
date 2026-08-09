@@ -2,17 +2,17 @@
 Gestão de Empréstimos - API Principal com Autenticação e Sistema de Assinaturas.
 """
 import os
-from fastapi import FastAPI
+import traceback
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import engine, Base, SessionLocal
-from app.models import Usuario
+from app.models import Usuario  # noqa: F401  — garante que os models são registrados no Base
 from app.services.auth_service import criar_senha_hash
 from app.routes import clientes, emprestimos, dashboard, auth, admin, pagamentos
-
-Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Gestão de Empréstimos API",
@@ -37,25 +37,53 @@ app.include_router(emprestimos.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(pagamentos.router, prefix="/api")
 
+
+# ---------------------------------------------------------------------------
+# Handler global: garante que qualquer erro 500 retorne JSON válido
+# (resolve o erro: "Unexpected token 'I', 'Internal S'... is not valid JSON")
+# ---------------------------------------------------------------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print(f"[ERROR] Erro não tratado em {request.method} {request.url.path}:")
+    traceback.print_exc()
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": "Erro interno do servidor. Por favor, tente novamente.",
+            "erro": str(exc),
+        },
+    )
+
 ADMIN_EMAIL = "leosoares482@gmail.com"
 ADMIN_PASSWORD = "Bleos200715@@"
 
 
 @app.on_event("startup")
-def criar_usuario_admin_inicial():
-    """Garante que o administrador principal esteja cadastrado e ativo no sistema."""
+def inicializar_sistema():
+    """Cria tabelas no banco e garante que o administrador principal está cadastrado."""
+    # 1. Cria todas as tabelas (seguro re-executar: CREATE TABLE IF NOT EXISTS)
+    try:
+        print("[STARTUP] Criando/verificando tabelas no banco de dados...")
+        Base.metadata.create_all(bind=engine)
+        print("[STARTUP] Tabelas OK.")
+    except Exception as e:
+        print(f"[STARTUP ERROR] Falha ao criar tabelas: {e}")
+        traceback.print_exc()
+        return  # Sem banco = inutil prosseguir
+
+    # 2. Garante o usuário admin master
     db: Session = SessionLocal()
     try:
         admin_existente = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
         if not admin_existente:
-            admin = Usuario(
+            novo_admin = Usuario(
                 nome="Administrador",
                 email=ADMIN_EMAIL,
                 senha_hash=criar_senha_hash(ADMIN_PASSWORD),
                 status_assinatura="ativo",
                 is_admin=True
             )
-            db.add(admin)
+            db.add(novo_admin)
             db.commit()
             print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) criado com sucesso!")
         else:
@@ -64,7 +92,9 @@ def criar_usuario_admin_inicial():
             db.commit()
             print(f"[STARTUP] Admin master ({ADMIN_EMAIL}) atualizado!")
     except Exception as e:
+        db.rollback()
         print(f"[STARTUP ERROR] Erro ao verificar admin inicial: {e}")
+        traceback.print_exc()
     finally:
         db.close()
 

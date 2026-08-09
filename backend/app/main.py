@@ -2,6 +2,17 @@
 Gestão de Empréstimos - API Principal com Autenticação e Sistema de Assinaturas.
 """
 import os
+import sys
+
+# Adiciona caminhos ao sys.path para garantir resolução dos módulos (app, backend, etc.)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(BASE_DIR)
+ROOT_DIR = os.path.dirname(BACKEND_DIR)
+
+for p in (ROOT_DIR, BACKEND_DIR, BASE_DIR):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 import traceback
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware

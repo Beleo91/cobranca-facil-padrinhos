@@ -523,7 +523,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email, senha })
         });
-        const data = await res.json();
+        let data;
+        try {
+          data = await res.json();
+        } catch (jsonErr) {
+          data = { detail: 'Erro no servidor. Por favor, tente novamente em alguns instantes.' };
+        }
         if (!res.ok) throw new Error(data.detail || 'Falha ao efetuar login');
 
         localStorage.setItem('token', data.access_token);

@@ -23,8 +23,5 @@ async def global_exception_handler(request: Request, exc: Exception):
     traceback.print_exc()
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "Erro interno no servidor Serverless.",
-            "erro": str(exc)
-        }
+        content={"detail": "Erro interno do servidor", "error": str(exc)}
     )

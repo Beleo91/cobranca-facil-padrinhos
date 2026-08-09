@@ -55,14 +55,11 @@ app.include_router(pagamentos.router, prefix="/api")
 # ---------------------------------------------------------------------------
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    print(f"[ERROR] Erro não tratado em {request.method} {request.url.path}:")
+    import traceback
     traceback.print_exc()
     return JSONResponse(
         status_code=500,
-        content={
-            "detail": "Erro interno do servidor. Por favor, tente novamente.",
-            "erro": str(exc),
-        },
+        content={"detail": "Erro interno do servidor", "error": str(exc)}
     )
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")

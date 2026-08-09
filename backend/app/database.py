@@ -6,21 +6,25 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-# Garantindo que a pasta do banco existe no Render
-DB_PATH = "/opt/render/project/src/data"
-try:
-    os.makedirs(DB_PATH, exist_ok=True)
-except Exception:
-    # Se não estiver no Render, usa fallback local
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data")
-    os.makedirs(DB_PATH, exist_ok=True)
-
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    db_path = os.path.join(DB_PATH, "emprestimos.db")
-    DATABASE_URL = f"sqlite:///{db_path}"
-    print(f"[DATABASE] Usando SQLite em: {db_path}")
+    if os.getenv("VERCEL"):
+        db_path = "/tmp/emprestimos.db"
+        DATABASE_URL = f"sqlite:///{db_path}"
+        print(f"[DATABASE] Rodando na Vercel. Usando SQLite temporário em: {db_path}")
+    else:
+        # Garantindo que a pasta do banco existe no Render ou local
+        DB_PATH = "/opt/render/project/src/data"
+        try:
+            os.makedirs(DB_PATH, exist_ok=True)
+        except Exception:
+            # Se não estiver no Render, usa fallback local
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            DB_PATH = os.path.join(os.path.dirname(BASE_DIR), "data")
+            os.makedirs(DB_PATH, exist_ok=True)
+        db_path = os.path.join(DB_PATH, "emprestimos.db")
+        DATABASE_URL = f"sqlite:///{db_path}"
+        print(f"[DATABASE] Usando SQLite em: {db_path}")
 else:
     print(f"[DATABASE] Usando banco externo (DATABASE_URL definida).")
 

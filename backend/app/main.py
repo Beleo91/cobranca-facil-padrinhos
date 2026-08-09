@@ -55,7 +55,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bleos1991@")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
 
 
 @app.on_event("startup")
@@ -74,6 +74,14 @@ def inicializar_sistema():
     # 2. Sincroniza o admin master via ORM
     db: Session = SessionLocal()
     try:
+        # Se o usuário antigo 'leosoares@gmail.com' existir no banco, remove para evitar duplicidades
+        old_admin = db.query(Usuario).filter(Usuario.email == "leosoares@gmail.com").first()
+        if old_admin:
+            db.delete(old_admin)
+            db.commit()
+            print("[STARTUP] Antigo admin leosoares@gmail.com removido.")
+
+        # Busca pelo admin atual leosoares482@gmail.com
         admin = db.query(Usuario).filter(Usuario.email == ADMIN_EMAIL).first()
         if admin:
             admin.senha_hash = criar_senha_hash(ADMIN_PASSWORD)

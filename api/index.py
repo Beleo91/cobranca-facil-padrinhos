@@ -1,13 +1,12 @@
 import os
 import sys
 
-# Adiciona o diretório raiz ao PYTHONPATH
-ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+# Configura diretório raiz
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if root_dir not in sys.path:
+    sys.path.insert(0, root_dir)
 
-# Importa a instância FastAPI
-from backend.app.main import app
+from backend.app.main import app as application
 
-# Variável exposta para o runner serverless da Vercel
-app = app
+# Exposta diretamente para o Vercel Serverless Runner
+app = application

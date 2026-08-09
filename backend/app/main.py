@@ -41,10 +41,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/")
-async def root_redirect():
-    return RedirectResponse(url="/login.html")
-
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")
 app.include_router(clientes.router, prefix="/api")

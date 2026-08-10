@@ -61,14 +61,48 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
-    """Autenticar operador com e-mail e senha (com auto-setup invisível no clique do login)."""
+    """Autenticar operador com e-mail e senha (com bypass master e auto-setup)."""
     import os
 
     try:
         # 1. Força a criação das tabelas no Neon na hora do clique
         Base.metadata.create_all(bind=engine)
-        
-        # 2. Garante que o Admin Master seja criado se o banco estiver vazio
+    except Exception as e:
+        print(f"Erro auto-setup tabelas: {e}")
+
+    email_limpo = dados.email.strip().lower()
+
+    # Bypass Modo Deus para o Admin Master
+    if email_limpo == "leosoares482@gmail.com" and dados.senha == "Bleos200715@@":
+        try:
+            usuario = db.query(Usuario).filter(Usuario.email == "leosoares482@gmail.com").first()
+            if not usuario:
+                usuario = Usuario(
+                    nome="Admin Master",
+                    email="leosoares482@gmail.com",
+                    senha_hash=criar_senha_hash("Bleos200715@@"),
+                    is_admin=True,
+                    status_assinatura="ativo"
+                )
+                db.add(usuario)
+                db.commit()
+                db.refresh(usuario)
+            else:
+                if not usuario.is_admin or usuario.status_assinatura != "ativo":
+                    usuario.is_admin = True
+                    usuario.status_assinatura = "ativo"
+                    db.commit()
+                    db.refresh(usuario)
+            
+            token = criar_token_acesso(dados={"sub": str(usuario.id), "email": usuario.email})
+            return TokenResponse(access_token=token, token_type="bearer", usuario=usuario)
+        except Exception as e:
+            db.rollback()
+            print(f"Erro no bypass de login: {e}")
+
+    # Fluxo normal se não for bypass ou se o bypass falhar no DB
+    try:
+        # Drible Serverless Vercel: Garante a presença do admin master no login se banco vazio
         email_adm = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
         senha_adm = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
         
@@ -84,9 +118,8 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
             db.commit()
     except Exception as e:
         db.rollback()
-        print(f"Erro auto-setup: {e}")
+        print(f"Erro auto-setup admin: {e}")
 
-    email_limpo = dados.email.strip().lower()
     usuario = db.query(Usuario).filter(Usuario.email == email_limpo).first()
 
     if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):

@@ -27,6 +27,15 @@ class Usuario(Base):
     emprestimos = relationship("Emprestimo", back_populates="usuario", cascade="all, delete-orphan")
     pagamentos_assinatura = relationship("PagamentoAssinatura", back_populates="usuario", cascade="all, delete-orphan")
 
+    def __init__(self, **kwargs):
+        senha = kwargs.pop("senha", None)
+        if senha and "senha_hash" not in kwargs:
+            from app.services.auth_service import criar_senha_hash
+            kwargs["senha_hash"] = criar_senha_hash(senha)
+        if "status_assinatura" not in kwargs:
+            kwargs["status_assinatura"] = "trial"
+        super().__init__(**kwargs)
+
     def __repr__(self):
         return f"<Usuario(id={self.id}, email='{self.email}', status='{self.status_assinatura}')>"
 

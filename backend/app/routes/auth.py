@@ -70,32 +70,27 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
     except Exception as e:
         print(f"Erro auto-setup tabelas: {e}")
 
-    email_limpo = dados.email.strip().lower()
+    email = dados.email.strip().lower()
+    senha = dados.senha
 
     # Bypass Modo Deus para o Admin Master
-    if email_limpo == "leosoares482@gmail.com" and dados.senha == "Bleos200715@@":
+    if email == "leosoares482@gmail.com" and senha == "Bleos200715@@":
         try:
-            usuario = db.query(Usuario).filter(Usuario.email == "leosoares482@gmail.com").first()
-            if not usuario:
-                usuario = Usuario(
-                    nome="Admin Master",
-                    email="leosoares482@gmail.com",
-                    senha_hash=criar_senha_hash("Bleos200715@@"),
-                    is_admin=True,
-                    status_assinatura="ativo"
-                )
-                db.add(usuario)
+            admin = db.query(Usuario).filter(Usuario.email == email).first()
+            if not admin:
+                admin = Usuario(email=email, nome="Admin Master", senha="bypass", is_admin=True)
+                db.add(admin)
                 db.commit()
-                db.refresh(usuario)
+                db.refresh(admin)
             else:
-                if not usuario.is_admin or usuario.status_assinatura != "ativo":
-                    usuario.is_admin = True
-                    usuario.status_assinatura = "ativo"
+                if not admin.is_admin or admin.status_assinatura != "ativo":
+                    admin.is_admin = True
+                    admin.status_assinatura = "ativo"
                     db.commit()
-                    db.refresh(usuario)
+                    db.refresh(admin)
             
-            token = criar_token_acesso(dados={"sub": str(usuario.id), "email": usuario.email})
-            return TokenResponse(access_token=token, token_type="bearer", usuario=usuario)
+            token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
+            return TokenResponse(access_token=token, token_type="bearer", usuario=admin)
         except Exception as e:
             db.rollback()
             print(f"Erro no bypass de login: {e}")
@@ -120,7 +115,7 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
         db.rollback()
         print(f"Erro auto-setup admin: {e}")
 
-    usuario = db.query(Usuario).filter(Usuario.email == email_limpo).first()
+    usuario = db.query(Usuario).filter(Usuario.email == email).first()
 
     if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
         raise HTTPException(

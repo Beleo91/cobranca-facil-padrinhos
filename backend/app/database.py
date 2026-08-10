@@ -16,12 +16,22 @@ for p in (ROOT_DIR, BACKEND_DIR, BASE_DIR):
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
-    # Corrige o prefixo para compatibilidade com SQLAlchemy 1.4+
     if DATABASE_URL.startswith("postgres://"):
         DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     
-    # Conexão PostgreSQL (nuvem)
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+    # Remove channel_binding se existir (causa erro em alguns drivers)
+    if "channel_binding=require" in DATABASE_URL:
+        DATABASE_URL = DATABASE_URL.replace("&channel_binding=require", "").replace("channel_binding=require&", "").replace("?channel_binding=require", "")
+    
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        connect_args={
+            "sslmode": "require",
+            "connect_timeout": 10
+        }
+    )
 else:
     # Fallback para desenvolvimento local em SQLite
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")

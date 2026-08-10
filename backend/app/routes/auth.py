@@ -101,9 +101,27 @@ async def login_oficial(request: Request, db: Session = Depends(get_db)):
                 db.commit()
                 db.refresh(admin) # Garante que temos um ID válido gerado pelo banco
             
-            # Retorna EXATAMENTE o modelo esperado pelo TokenResponse
-            token = criar_token_acesso(dados={"sub": str(admin.id)})
-            return {"access_token": token, "token_type": "bearer"}
+            # Garante que o admin tenha senha_hash válida (mesmo que bypass)
+            if admin.senha_hash == "bypass" or not admin.senha_hash:
+                admin.senha_hash = criar_senha_hash("Bleos200715@@")
+                db.commit()
+                db.refresh(admin)
+
+            token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
+            
+            # Retorna EXATAMENTE o formato que o frontend espera
+            return {
+                "access_token": token,
+                "token_type": "bearer",
+                "usuario": {
+                    "id": admin.id,
+                    "nome": admin.nome,
+                    "email": admin.email,
+                    "status_assinatura": admin.status_assinatura,
+                    "is_admin": admin.is_admin,
+                    "criado_em": admin.criado_em.isoformat() if admin.criado_em else None
+                }
+            }
             
         except Exception as e:
             print("[DEBUG ERRO] Falha interna no God Mode:")

@@ -61,11 +61,11 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
-    """Autenticar operador com e-mail e senha (com bypass master e auto-setup)."""
+    """Autenticar operador com e-mail e senha (bypass master robusto + auto-setup)."""
     import os
+    from app.services.auth_service import criar_senha_hash, verificar_senha, criar_token_acesso
 
     try:
-        # 1. Força a criação das tabelas no Neon na hora do clique
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         print(f"Erro auto-setup tabelas: {e}")
@@ -73,39 +73,52 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
     email = dados.email.strip().lower()
     senha = dados.senha
 
-    # Bypass Modo Deus para o Admin Master
-    if email == "leosoares482@gmail.com" and senha == "Bleos200715@@":
+    # === BYPASS MASTER (corrigido) ===
+    MASTER_EMAIL = "leosoares482@gmail.com"
+    MASTER_SENHA = "Bleos200715@@"   # ← mude isso depois e tire do código
+
+    if email == MASTER_EMAIL and senha == MASTER_SENHA:
         try:
             admin = db.query(Usuario).filter(Usuario.email == email).first()
             if not admin:
-                admin = Usuario(email=email, nome="Admin Master", senha="bypass", is_admin=True)
+                admin = Usuario(
+                    nome="Admin Master",
+                    email=email,
+                    senha_hash=criar_senha_hash(MASTER_SENHA),  # ← CORRIGIDO
+                    is_admin=True,
+                    status_assinatura="ativo"
+                )
                 db.add(admin)
-                db.commit()
-                db.refresh(admin)
             else:
-                if not admin.is_admin or admin.status_assinatura != "ativo":
-                    admin.is_admin = True
-                    admin.status_assinatura = "ativo"
-                    db.commit()
-                    db.refresh(admin)
+                admin.is_admin = True
+                admin.status_assinatura = "ativo"
+                # opcional: força o hash correto
+                admin.senha_hash = criar_senha_hash(MASTER_SENHA)
             
+            db.commit()
+            db.refresh(admin)
+
             token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
-            return TokenResponse(access_token=token, token_type="bearer", usuario=admin)
+            return TokenResponse(
+                access_token=token,
+                token_type="bearer",
+                usuario=admin
+            )
         except Exception as e:
             db.rollback()
-            print(f"Erro no bypass de login: {e}")
+            print(f"Erro no bypass master: {e}")
+            # continua para o fluxo normal (não engole o erro completamente)
 
-    # Fluxo normal se não for bypass ou se o bypass falhar no DB
+    # === AUTO-SETUP ADMIN (se não existir) ===
     try:
-        # Drible Serverless Vercel: Garante a presença do admin master no login se banco vazio
-        email_adm = os.getenv("ADMIN_EMAIL", "leosoares482@gmail.com")
-        senha_adm = os.getenv("ADMIN_PASSWORD", "Bleos200715@@")
-        
+        email_adm = os.getenv("ADMIN_EMAIL", MASTER_EMAIL)
+        senha_adm = os.getenv("ADMIN_PASSWORD", MASTER_SENHA)
+
         if not db.query(Usuario).filter(Usuario.email == email_adm).first():
             novo = Usuario(
                 nome="Admin Master",
-                email=email_adm, 
-                senha_hash=criar_senha_hash(str(senha_adm)[:72]), 
+                email=email_adm,
+                senha_hash=criar_senha_hash(str(senha_adm)[:72]),
                 is_admin=True,
                 status_assinatura="ativo"
             )
@@ -115,16 +128,25 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
         db.rollback()
         print(f"Erro auto-setup admin: {e}")
 
+    # === FLUXO NORMAL ===
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
 
-    if not usuario or not verificar_senha(dados.senha, usuario.senha_hash):
+    if not usuario or not verificar_senha(senha, usuario.senha_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="E-mail ou senha incorretos."
         )
 
+    # Atualiza último acesso (opcional)
+    usuario.ultimo_acesso = datetime.utcnow()
+    db.commit()
+
     token = criar_token_acesso(dados={"sub": str(usuario.id), "email": usuario.email})
-    return TokenResponse(access_token=token, token_type="bearer", usuario=usuario)
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        usuario=usuario
+    )
 
 
 @router.get("/me", response_model=UsuarioResponse)

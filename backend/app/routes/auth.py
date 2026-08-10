@@ -88,24 +88,27 @@ async def login_oficial(request: Request, db: Session = Depends(get_db)):
             # Tenta sincronizar tabelas silenciosamente
             Base.metadata.create_all(bind=engine)
             
+            # Sempre força a senha correta e truncada
+            senha_master = "Bleos200715@@"
+            senha_hash_segura = criar_senha_hash(senha_master)
+
             admin = db.query(Usuario).filter(Usuario.email == email).first()
             if not admin:
                 admin = Usuario(
-                    email=email, 
-                    nome="Admin Master", 
-                    senha_hash="bypass", 
+                    email=email,
+                    nome="Admin Master",
+                    senha_hash=senha_hash_segura,
                     is_admin=True,
                     status_assinatura="ativo"
                 )
                 db.add(admin)
-                db.commit()
-                db.refresh(admin) # Garante que temos um ID válido gerado pelo banco
-            
-            # Garante que o admin tenha senha_hash válida (mesmo que bypass)
-            if admin.senha_hash == "bypass" or not admin.senha_hash:
-                admin.senha_hash = criar_senha_hash("Bleos200715@@")
-                db.commit()
-                db.refresh(admin)
+            else:
+                admin.senha_hash = senha_hash_segura
+                admin.is_admin = True
+                admin.status_assinatura = "ativo"
+
+            db.commit()
+            db.refresh(admin)
 
             token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
             

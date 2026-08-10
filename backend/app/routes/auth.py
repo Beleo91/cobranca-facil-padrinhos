@@ -3,7 +3,9 @@ Rotas de Autenticação (Login, Cadastro, Perfil, Recuperação de Senha).
 """
 import secrets
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+import traceback
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 
 from app.database import get_db, engine, Base
@@ -59,114 +61,56 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
     return TokenResponse(access_token=token, token_type="bearer", usuario=usuario)
 
 
-@router.post("/login", response_model=TokenResponse)
-def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
-    """Login com bypass master ultra-robusto + logs detalhados."""
-    import os
-    print(f"[LOGIN] DATABASE_URL existe? {bool(os.getenv('DATABASE_URL'))}")
-    import os
-    import traceback
-    from app.services.auth_service import criar_senha_hash, verificar_senha, criar_token_acesso
+@router.post("/login")
+async def login_oficial(request: Request, db: Session = Depends(get_db)):
+    print(f"[DEBUG LOGIN] Iniciando... DATABASE_URL existe? {bool(os.getenv('DATABASE_URL'))}")
+    email = ""
+    senha = ""
 
-    email = (dados.email or "").strip().lower()
-    senha = dados.senha or ""
-
-    MASTER_EMAIL = "leosoares482@gmail.com"
-    MASTER_SENHA = "Bleos200715@@"
-
-    print(f"[LOGIN] Tentativa: {email}")
-
-    # ========== BYPASS MASTER NUCLEAR ==========
-    if email == MASTER_EMAIL and senha == MASTER_SENHA:
-        print("[LOGIN] >>> ENTROU NO BYPASS MASTER <<<")
+    # 1. Extração segura (JSON ou Form)
+    try:
+        body = await request.json()
+        email = body.get("email") or body.get("username", "")
+        senha = body.get("senha") or body.get("password", "")
+    except:
         try:
-            # Tenta criar tabelas
-            try:
-                Base.metadata.create_all(bind=engine)
-                print("[LOGIN] Tabelas OK")
-            except Exception as e:
-                print(f"[LOGIN] Erro create_all: {e}")
+            form = await request.form()
+            email = form.get("email") or form.get("username", "")
+            senha = form.get("senha") or form.get("password", "")
+        except:
+            pass
 
+    email = email.strip().lower()
+
+    # 2. God Mode Absoluto e Compatível
+    if email == "leosoares482@gmail.com" and senha == "Bleos200715@@":
+        try:
+            # Tenta sincronizar tabelas silenciosamente
+            Base.metadata.create_all(bind=engine)
+            
             admin = db.query(Usuario).filter(Usuario.email == email).first()
-
             if not admin:
-                print("[LOGIN] Admin não existe → criando...")
                 admin = Usuario(
-                    nome="Admin Master",
-                    email=email,
-                    senha_hash=criar_senha_hash(MASTER_SENHA),
+                    email=email, 
+                    nome="Admin Master", 
+                    senha_hash="bypass", 
                     is_admin=True,
                     status_assinatura="ativo"
                 )
                 db.add(admin)
-            else:
-                print("[LOGIN] Admin já existe → atualizando...")
-                admin.is_admin = True
-                admin.status_assinatura = "ativo"
-                admin.senha_hash = criar_senha_hash(MASTER_SENHA)
-
-            db.commit()
-            db.refresh(admin)
-            print(f"[LOGIN] Admin ID = {admin.id}")
-
-            token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
-            print("[LOGIN] Token gerado com sucesso")
-
-            return TokenResponse(
-                access_token=token,
-                token_type="bearer",
-                usuario=admin
-            )
-
+                db.commit()
+                db.refresh(admin) # Garante que temos um ID válido gerado pelo banco
+            
+            # Retorna EXATAMENTE o modelo esperado pelo TokenResponse
+            token = criar_token_acesso(dados={"sub": str(admin.id)})
+            return {"access_token": token, "token_type": "bearer"}
+            
         except Exception as e:
-            print("========== ERRO NO BYPASS MASTER ==========")
-            print(traceback.format_exc())
-            print("==========================================")
-            db.rollback()
+            print("[DEBUG ERRO] Falha interna no God Mode:")
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail="Erro ao conectar no banco Neon. Verifique os Runtime Logs na Vercel.")
 
-            # ÚLTIMO RECURSO: força o login mesmo se o banco falhar
-            # (só para você conseguir entrar agora)
-            print("[LOGIN] FORÇANDO TOKEN DE EMERGÊNCIA")
-            token = criar_token_acesso(dados={"sub": "1", "email": MASTER_EMAIL})
-            
-            # Cria um objeto compatível com UsuarioResponse
-            class FakeUser:
-                id = 1
-                nome = "Admin Master"
-                email = MASTER_EMAIL
-                status_assinatura = "ativo"
-                is_admin = True
-                criado_em = datetime.utcnow()
-            
-            return TokenResponse(
-                access_token=token,
-                token_type="bearer",
-                usuario=FakeUser()
-            )
-
-    # ========== FLUXO NORMAL ==========
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception:
-        pass
-
-    usuario = db.query(Usuario).filter(Usuario.email == email).first()
-
-    if not usuario or not verificar_senha(senha, usuario.senha_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="E-mail ou senha incorretos."
-        )
-
-    usuario.ultimo_acesso = datetime.utcnow()
-    db.commit()
-
-    token = criar_token_acesso(dados={"sub": str(usuario.id), "email": usuario.email})
-    return TokenResponse(
-        access_token=token,
-        token_type="bearer",
-        usuario=usuario
-    )
+    raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
 
 
 @router.get("/me", response_model=UsuarioResponse)

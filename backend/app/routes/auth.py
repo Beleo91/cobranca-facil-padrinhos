@@ -124,9 +124,13 @@ async def login_oficial(request: Request, db: Session = Depends(get_db)):
             }
             
         except Exception as e:
-            print("[DEBUG ERRO] Falha interna no God Mode:")
+            print("[DEBUG ERRO GOD MODE]")
             traceback.print_exc()
-            raise HTTPException(status_code=500, detail="Erro ao conectar no banco Neon. Verifique os Runtime Logs na Vercel.")
+            # Mostra o erro real para debug (depois removemos)
+            raise HTTPException(
+                status_code=500, 
+                detail=f"Erro Neon: {str(e)}"
+            )
 
     raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
 

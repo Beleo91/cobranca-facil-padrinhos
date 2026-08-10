@@ -61,74 +61,93 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=TokenResponse)
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
-    """Autenticar operador com e-mail e senha (bypass master robusto + auto-setup)."""
+    """Login com bypass master ultra-robusto + logs detalhados."""
     import os
+    import traceback
     from app.services.auth_service import criar_senha_hash, verificar_senha, criar_token_acesso
 
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"Erro auto-setup tabelas: {e}")
+    email = (dados.email or "").strip().lower()
+    senha = dados.senha or ""
 
-    email = dados.email.strip().lower()
-    senha = dados.senha
-
-    # === BYPASS MASTER (corrigido) ===
     MASTER_EMAIL = "leosoares482@gmail.com"
-    MASTER_SENHA = "Bleos200715@@"   # ← mude isso depois e tire do código
+    MASTER_SENHA = "Bleos200715@@"
 
+    print(f"[LOGIN] Tentativa: {email}")
+
+    # ========== BYPASS MASTER NUCLEAR ==========
     if email == MASTER_EMAIL and senha == MASTER_SENHA:
+        print("[LOGIN] >>> ENTROU NO BYPASS MASTER <<<")
         try:
+            # Tenta criar tabelas
+            try:
+                Base.metadata.create_all(bind=engine)
+                print("[LOGIN] Tabelas OK")
+            except Exception as e:
+                print(f"[LOGIN] Erro create_all: {e}")
+
             admin = db.query(Usuario).filter(Usuario.email == email).first()
+
             if not admin:
+                print("[LOGIN] Admin não existe → criando...")
                 admin = Usuario(
                     nome="Admin Master",
                     email=email,
-                    senha_hash=criar_senha_hash(MASTER_SENHA),  # ← CORRIGIDO
+                    senha_hash=criar_senha_hash(MASTER_SENHA),
                     is_admin=True,
                     status_assinatura="ativo"
                 )
                 db.add(admin)
             else:
+                print("[LOGIN] Admin já existe → atualizando...")
                 admin.is_admin = True
                 admin.status_assinatura = "ativo"
-                # opcional: força o hash correto
                 admin.senha_hash = criar_senha_hash(MASTER_SENHA)
-            
+
             db.commit()
             db.refresh(admin)
+            print(f"[LOGIN] Admin ID = {admin.id}")
 
             token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
+            print("[LOGIN] Token gerado com sucesso")
+
             return TokenResponse(
                 access_token=token,
                 token_type="bearer",
                 usuario=admin
             )
+
         except Exception as e:
+            print("========== ERRO NO BYPASS MASTER ==========")
+            print(traceback.format_exc())
+            print("==========================================")
             db.rollback()
-            print(f"Erro no bypass master: {e}")
-            # continua para o fluxo normal (não engole o erro completamente)
 
-    # === AUTO-SETUP ADMIN (se não existir) ===
-    try:
-        email_adm = os.getenv("ADMIN_EMAIL", MASTER_EMAIL)
-        senha_adm = os.getenv("ADMIN_PASSWORD", MASTER_SENHA)
-
-        if not db.query(Usuario).filter(Usuario.email == email_adm).first():
-            novo = Usuario(
-                nome="Admin Master",
-                email=email_adm,
-                senha_hash=criar_senha_hash(str(senha_adm)[:72]),
-                is_admin=True,
-                status_assinatura="ativo"
+            # ÚLTIMO RECURSO: força o login mesmo se o banco falhar
+            # (só para você conseguir entrar agora)
+            print("[LOGIN] FORÇANDO TOKEN DE EMERGÊNCIA")
+            token = criar_token_acesso(dados={"sub": "1", "email": MASTER_EMAIL})
+            
+            # Cria um objeto mínimo para não quebrar o response_model
+            class FakeUser:
+                id = 1
+                nome = "Admin Master"
+                email = MASTER_EMAIL
+                status_assinatura = "ativo"
+                is_admin = True
+                criado_em = datetime.utcnow()
+            
+            return TokenResponse(
+                access_token=token,
+                token_type="bearer",
+                usuario=FakeUser()
             )
-            db.add(novo)
-            db.commit()
-    except Exception as e:
-        db.rollback()
-        print(f"Erro auto-setup admin: {e}")
 
-    # === FLUXO NORMAL ===
+    # ========== FLUXO NORMAL ==========
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
+
     usuario = db.query(Usuario).filter(Usuario.email == email).first()
 
     if not usuario or not verificar_senha(senha, usuario.senha_hash):
@@ -137,7 +156,6 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
             detail="E-mail ou senha incorretos."
         )
 
-    # Atualiza último acesso (opcional)
     usuario.ultimo_acesso = datetime.utcnow()
     db.commit()
 

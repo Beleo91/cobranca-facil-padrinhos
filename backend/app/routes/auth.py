@@ -85,34 +85,32 @@ async def login_oficial(request: Request, db: Session = Depends(get_db)):
     # 2. God Mode Absoluto e Compatível
     if email == "leosoares482@gmail.com" and senha == "Bleos200715@@":
         try:
-            # Tenta sincronizar tabelas silenciosamente
             Base.metadata.create_all(bind=engine)
-            
-            # Sempre força a senha correta e truncada
-            senha_master = "Bleos200715@@"
-            senha_hash_segura = criar_senha_hash(senha_master)
+
+            SENHA_HASH_FIXA = "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW"
 
             admin = db.query(Usuario).filter(Usuario.email == email).first()
+            
             if not admin:
                 admin = Usuario(
                     email=email,
                     nome="Admin Master",
-                    senha_hash=senha_hash_segura,
+                    senha_hash=SENHA_HASH_FIXA,
                     is_admin=True,
                     status_assinatura="ativo"
                 )
                 db.add(admin)
             else:
-                admin.senha_hash = senha_hash_segura
+                admin.senha_hash = SENHA_HASH_FIXA
                 admin.is_admin = True
                 admin.status_assinatura = "ativo"
+                admin.nome = "Admin Master"
 
             db.commit()
             db.refresh(admin)
 
             token = criar_token_acesso(dados={"sub": str(admin.id), "email": admin.email})
             
-            # Retorna EXATAMENTE o formato que o frontend espera
             return {
                 "access_token": token,
                 "token_type": "bearer",
@@ -121,19 +119,15 @@ async def login_oficial(request: Request, db: Session = Depends(get_db)):
                     "nome": admin.nome,
                     "email": admin.email,
                     "status_assinatura": admin.status_assinatura,
-                    "is_admin": admin.is_admin,
-                    "criado_em": admin.criado_em.isoformat() if admin.criado_em else None
+                    "is_admin": True,
+                    "criado_em": admin.criado_em.isoformat() if hasattr(admin, "criado_em") and admin.criado_em else None
                 }
             }
-            
+
         except Exception as e:
             print("[DEBUG ERRO GOD MODE]")
             traceback.print_exc()
-            # Mostra o erro real para debug (depois removemos)
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Erro Neon: {str(e)}"
-            )
+            raise HTTPException(status_code=500, detail=f"Erro Neon: {str(e)}")
 
     raise HTTPException(status_code=401, detail="E-mail ou senha incorretos.")
 

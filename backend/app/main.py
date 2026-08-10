@@ -41,66 +41,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-from fastapi import Request, Depends, HTTPException
-from sqlalchemy.orm import Session
-from backend.app.database import get_db, engine, Base
-from backend.app.models import Usuario
-from backend.app.services.auth_service import criar_token_acesso
 
-@app.post("/api/login")
-async def login_absoluto(request: Request, db: Session = Depends(get_db)):
-    # 1. Força a criação das tabelas (evita erro 500)
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        print(f"[LOGIN_ABSOLUTO] Erro ao criar tabelas: {e}")
-
-    # 2. Captura o body de qualquer formato (JSON ou form-data)
-    email = ""
-    senha = ""
-
-    try:
-        body = await request.json()
-        email = body.get("email") or body.get("username") or ""
-        senha = body.get("senha") or body.get("password") or ""
-    except Exception:
-        pass
-
-    if not email:
-        try:
-            form = await request.form()
-            email = form.get("username") or form.get("email") or ""
-            senha = form.get("password") or form.get("senha") or ""
-        except Exception:
-            pass
-
-    email = email.strip().lower()
-    senha = senha.strip()
-
-    # 3. Bypass Master (God Mode)
-    if email == "leosoares482@gmail.com" and senha == "Bleos200715@@":
-        admin = db.query(Usuario).filter(Usuario.email == email).first()
-        if not admin:
-            admin = Usuario(
-                email=email,
-                nome="Admin Master",
-                senha="bypass",          # senha dummy (não será usada)
-                is_admin=True
-            )
-            db.add(admin)
-            db.commit()
-            db.refresh(admin)
-
-        token = criar_token_acesso(dados={"sub": str(admin.id)})
-        return {
-            "access_token": token,
-            "token_type": "bearer"
-        }
-
-    raise HTTPException(
-        status_code=401,
-        detail="Credenciais inválidas ou erro de comunicação."
-    )
 
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router, prefix="/api")

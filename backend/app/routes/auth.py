@@ -63,6 +63,8 @@ def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
 def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
     """Login com bypass master ultra-robusto + logs detalhados."""
     import os
+    print(f"[LOGIN] DATABASE_URL existe? {bool(os.getenv('DATABASE_URL'))}")
+    import os
     import traceback
     from app.services.auth_service import criar_senha_hash, verificar_senha, criar_token_acesso
 
@@ -127,7 +129,7 @@ def login(dados: UsuarioLogin, db: Session = Depends(get_db)):
             print("[LOGIN] FORÇANDO TOKEN DE EMERGÊNCIA")
             token = criar_token_acesso(dados={"sub": "1", "email": MASTER_EMAIL})
             
-            # Cria um objeto mínimo para não quebrar o response_model
+            # Cria um objeto compatível com UsuarioResponse
             class FakeUser:
                 id = 1
                 nome = "Admin Master"

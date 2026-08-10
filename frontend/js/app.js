@@ -1147,7 +1147,7 @@ async function alterarStatusAdmin(usuarioId, novoStatus) {
 
   try {
     const res = await fetchWithAuth(`${API_BASE}/admin/usuarios/${usuarioId}/status`, {
-      method: 'PATCH',
+      method: 'PUT',
       body: JSON.stringify({ status_assinatura: novoStatus })
     });
 

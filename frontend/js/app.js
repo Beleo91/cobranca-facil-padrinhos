@@ -1125,7 +1125,7 @@ function renderAdminUsuariosTable(usuarios) {
       <td>${u.total_clientes} / 2</td>
       <td>${u.total_emprestimos}</td>
       <td>${formatDate(u.criado_em)}</td>
-      <td class="text-right" style="display: flex; justify-content: flex-end; gap: 0.4rem;">
+      <td class="text-right" style="display: flex; justify-content: flex-end; gap: 0.4rem; flex-wrap: wrap;">
         ${u.status_assinatura !== 'ativo' ? `
           <button class="btn btn-primary btn-sm" onclick="alterarStatusAdmin(${u.id}, 'ativo')">✅ Ativar Plano</button>
         ` : ''}
@@ -1135,6 +1135,7 @@ function renderAdminUsuariosTable(usuarios) {
         ${u.status_assinatura !== 'trial' ? `
           <button class="btn btn-secondary btn-sm" onclick="alterarStatusAdmin(${u.id}, 'trial')">🔄 Reset Trial</button>
         ` : ''}
+        <button class="btn btn-danger btn-sm" onclick="excluirUsuario(${u.id})" style="background: #dc2626; border-color: #b91c1c;">🗑️ Excluir</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -1155,6 +1156,28 @@ async function alterarStatusAdmin(usuarioId, novoStatus) {
     if (!res.ok) throw new Error("Falha ao alterar status do usuário");
 
     showToast("Status de assinatura atualizado com sucesso!");
+    await loadAdminUsuarios();
+  } catch (err) {
+    showToast(err.message, 'danger');
+  }
+}
+
+async function excluirUsuario(usuarioId) {
+  if (!confirm("Tem certeza que deseja excluir este usuário e todos os seus dados permanentemente?")) return;
+
+  try {
+    const res = await fetchWithAuth(`${API_BASE}/admin/usuarios/${usuarioId}`, {
+      method: 'DELETE'
+    });
+
+    if (!res) return;
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.detail || "Falha ao excluir usuário.");
+    }
+
+    showToast("Usuário e todos os seus dados excluídos com sucesso!");
     await loadAdminUsuarios();
   } catch (err) {
     showToast(err.message, 'danger');

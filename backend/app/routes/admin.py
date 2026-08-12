@@ -76,3 +76,23 @@ def alterar_status_usuario(
         total_emprestimos=total_emprestimos,
         criado_em=user_alvo.criado_em
     )
+
+
+@router.delete("/usuarios/{usuario_id}")
+def excluir_usuario(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    usuario: Usuario = Depends(obter_usuario_atual)
+):
+    """Excluir um usuário e todos os seus dados vinculados do sistema."""
+    if not usuario.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso negado. Apenas administradores podem excluir usuários.")
+
+    user_alvo = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not user_alvo:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado.")
+
+    db.delete(user_alvo)
+    db.commit()
+
+    return {"mensagem": f"Usuário #{usuario_id} e seus dados vinculados foram excluídos com sucesso."}

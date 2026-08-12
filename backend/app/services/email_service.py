@@ -105,3 +105,59 @@ def enviar_email_recuperacao(destinatario: str, nome: str, token: str) -> bool:
     except Exception as e:
         print(f"[EMAIL ERROR] Falha ao enviar e-mail para {destinatario}: {e}")
         return False
+
+
+def enviar_email_lembrete_cobranca(destinatario: str, nome_cliente: str, valor: float, data_vencimento: str, num_parcela: int = 1) -> bool:
+    """Envia o e-mail de lembrete de cobrança (1 dia antes do vencimento)."""
+    assunto = f"⏰ Lembrete de Vencimento de Parcela (R$ {valor:.2f}) — Cobrança Fácil"
+    corpo_html = f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#0b0f19;font-family:'Inter',Arial,sans-serif;">
+      <div style="max-width:520px;margin:40px auto;background:rgba(15,23,42,0.95);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:40px 32px;box-shadow:0 20px 40px rgba(0,0,0,0.5);">
+        <div style="text-align:center;margin-bottom:28px;">
+          <span style="font-size:2.5rem;">⏰</span>
+          <h2 style="color:#f8fafc;margin:8px 0 4px;font-size:1.4rem;">Cobrança Fácil Padrinhos</h2>
+          <p style="color:#64748b;margin:0;font-size:0.85rem;">Lembrete de Vencimento</p>
+        </div>
+
+        <h3 style="color:#f8fafc;font-size:1.1rem;margin:0 0 12px;">Olá, {nome_cliente}!</h3>
+        <p style="color:#94a3b8;line-height:1.6;margin:0 0 24px;">
+          Este é um lembrete amigável de que sua parcela nº <strong style="color:#f8fafc;">#{num_parcela}</strong> no valor de <strong style="color:#10b981;">R$ {valor:.2f}</strong> vence amanhã, dia <strong style="color:#f8fafc;">{data_vencimento}</strong>.
+        </p>
+
+        <p style="color:#64748b;font-size:0.8rem;line-height:1.5;margin:24px 0 0;border-top:1px solid rgba(255,255,255,0.07);padding-top:20px;">
+          Caso já tenha efetuado o pagamento, por favor desconsidere este e-mail.
+        </p>
+      </div>
+    </body>
+    </html>
+    """
+    corpo_texto = f"Olá, {nome_cliente}!\n\nLembrete de vencimento da parcela nº #{num_parcela} no valor de R$ {valor:.2f} com vencimento em {data_vencimento}."
+
+    if not _smtp_configurado():
+        print(f"[EMAIL LEMBRETE] SMTP não configurado. Lembrete para {destinatario}: R$ {valor:.2f} em {data_vencimento}")
+        return True
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = assunto
+        msg["From"] = f"Cobrança Fácil Padrinhos <{SMTP_USER}>"
+        msg["To"] = destinatario
+
+        msg.attach(MIMEText(corpo_texto, "plain", "utf-8"))
+        msg.attach(MIMEText(corpo_html, "html", "utf-8"))
+
+        context = ssl.create_default_context()
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.ehlo()
+            server.starttls(context=context)
+            server.login(SMTP_USER, SMTP_PASSWORD)
+            server.sendmail(SMTP_USER, destinatario, msg.as_string())
+
+        print(f"[EMAIL LEMBRETE] E-mail de lembrete enviado para {destinatario}")
+        return True
+    except Exception as e:
+        print(f"[EMAIL ERROR] Falha ao enviar lembrete para {destinatario}: {e}")
+        return False

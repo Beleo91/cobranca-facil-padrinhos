@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from app.database import engine, Base, SessionLocal, get_db
 from app.models import Usuario
 from app.services.auth_service import criar_senha_hash, criar_token_acesso
-from app.routes import auth, admin, clientes, emprestimos, dashboard, pagamentos
+from app.routes import auth, admin, clientes, emprestimos, dashboard, pagamentos, cron
 
 app = FastAPI(
     title="Gestão de Empréstimos API",
@@ -47,6 +47,7 @@ app.include_router(clientes.router, prefix="/api")
 app.include_router(emprestimos.router, prefix="/api")
 app.include_router(dashboard.router, prefix="/api")
 app.include_router(pagamentos.router, prefix="/api")
+app.include_router(cron.router, prefix="/api")
 
 # ===== Handler global de erro (sempre retorna JSON) =====
 @app.exception_handler(Exception)

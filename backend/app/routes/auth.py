@@ -60,7 +60,8 @@ async def registrar_usuario(request: Request, db: Session = Depends(get_db)):
         ).strip().lower()
 
         senha = body.get("senha") or body.get("password", "")
-        senha = str(senha).strip()[:72]
+        # Truncamento SEGURO por bytes (não por caracteres)
+        senha = str(senha or "").encode("utf-8")[:72].decode("utf-8", errors="ignore").strip()
 
         # 3. Validações claras
         if not email or not senha:

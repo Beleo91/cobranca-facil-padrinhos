@@ -22,13 +22,13 @@ security = HTTPBearer(auto_error=False)
 
 
 def tratar_senha(senha: str) -> str:
+    """Trunca a senha corretamente por BYTES (limite do bcrypt = 72 bytes)."""
     s = str(senha or "")
-    # Truncamento obrigatório para bcrypt (máximo 72 bytes)
+    # Truncamento seguro por bytes UTF-8
     return s.encode("utf-8")[:72].decode("utf-8", errors="ignore")
 
 def criar_senha_hash(senha: str) -> str:
     return pwd_context.hash(tratar_senha(senha))
-
 
 def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
     return pwd_context.verify(tratar_senha(senha_plana), senha_hash)

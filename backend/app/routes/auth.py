@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 import os
 import traceback
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db, engine, Base
@@ -22,43 +23,121 @@ from app.services.email_service import enviar_email_recuperacao
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=201)
-def registrar_usuario(dados: UsuarioCreate, db: Session = Depends(get_db)):
-    """Cadastrar um novo operador no sistema."""
+@router.post("/register")
+async def registrar_usuario(request: Request, db: Session = Depends(get_db)):
     try:
-        Base.metadata.create_all(bind=engine)
-    except Exception:
-        pass
+        # Garante a criação das tabelas caso não existam (resiliência no Vercel/Neon)
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception:
+            pass
 
-    email_limpo = dados.email.strip().lower()
+        # 1. Extração ultra-segura do body (JSON ou form)
+        try:
+            body = await request.json()
+        except Exception:
+            try:
+                form = await request.form()
+                body = dict(form)
+            except Exception:
+                body = {}
 
-    existente = db.query(Usuario).filter(Usuario.email == email_limpo).first()
-    if existente:
-        raise HTTPException(
-            status_code=400,
-            detail="Este e-mail já está cadastrado no sistema."
+        # 2. Aceita todas as variações possíveis de nome de campo
+        nome = (
+            body.get("nome")
+            or body.get("nomeCompleto")
+            or body.get("nome_completo")
+            or body.get("username")
+            or body.get("name")
+            or "Novo Cliente"
+        ).strip()
+
+        email = (
+            body.get("email")
+            or body.get("e-mail")
+            or body.get("mail")
+            or ""
+        ).strip().lower()
+
+        senha = (
+            body.get("senha")
+            or body.get("password")
+            or body.get("pass")
+            or ""
         )
 
-    usuario = Usuario(
-        nome=dados.nome.strip(),
-        email=email_limpo,
-        senha_hash=criar_senha_hash(str(dados.senha)[:72]),
-        status_assinatura="trial",
-        is_admin=False
-    )
-    try:
-        db.add(usuario)
+        # 3. Validações claras
+        if not email or not senha:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "E-mail e senha não foram recebidos pelo servidor."}
+            )
+
+        if len(senha) < 4:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "A senha deve ter no mínimo 4 caracteres."}
+            )
+
+        # 4. Verifica e-mail duplicado
+        existente = db.query(Usuario).filter(Usuario.email == email).first()
+        if existente:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Este e-mail já está cadastrado no sistema."}
+            )
+
+        # 5. Cria o usuário
+        novo_usuario = Usuario(
+            nome=nome,
+            email=email,
+            senha_hash=criar_senha_hash(senha),
+            is_admin=False,
+            status_assinatura="trial"
+        )
+
+        db.add(novo_usuario)
         db.commit()
-        db.refresh(usuario)
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=400,
-            detail="Erro ao registrar usuário. Verifique se o e-mail já está cadastrado."
-        )
+        db.refresh(novo_usuario)
 
-    token = criar_token_acesso(dados={"sub": str(usuario.id), "email": usuario.email})
-    return TokenResponse(access_token=token, token_type="bearer", usuario=usuario)
+        # 6. Gera o token
+        token = criar_token_acesso(dados={"sub": str(novo_usuario.id), "email": novo_usuario.email})
+
+        # 7. Retorno EXATAMENTE no formato que o frontend espera
+        return {
+            "access_token": token,
+            "token_type": "bearer",
+            "usuario": {
+                "id": novo_usuario.id,
+                "nome": novo_usuario.nome,
+                "email": novo_usuario.email,
+                "status_assinatura": novo_usuario.status_assinatura,
+                "is_admin": novo_usuario.is_admin,
+                "criado_em": novo_usuario.criado_em.isoformat() if novo_usuario.criado_em else None
+            }
+        }
+
+    except Exception as e:
+        # Rollback obrigatório
+        try:
+            db.rollback()
+        except Exception:
+            pass
+
+        # DEDO-DURO TOTAL: devolve o erro real + traceback resumido
+        import traceback
+        tb = traceback.format_exc()
+        print("=" * 80)
+        print("[CRASH NO CADASTRO]")
+        print(tb)
+        print("=" * 80)
+
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": f"CRASH NO PYTHON: {str(e)}\n\n{tb[-800:]}"
+            }
+        )
 
 
 @router.post("/login")

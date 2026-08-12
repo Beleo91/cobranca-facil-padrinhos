@@ -79,20 +79,24 @@ def alterar_status_usuario(
 
 
 @router.delete("/usuarios/{usuario_id}")
-def excluir_usuario(
+async def excluir_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
-    usuario: Usuario = Depends(obter_usuario_atual)
+    admin_atual: Usuario = Depends(obter_usuario_atual)
 ):
     """Excluir um usuário e todos os seus dados vinculados do sistema."""
-    if not usuario.is_admin:
-        raise HTTPException(status_code=403, detail="Acesso negado. Apenas administradores podem excluir usuários.")
+    if not admin_atual.is_admin:
+        raise HTTPException(status_code=403, detail="Acesso negado.")
 
-    user_alvo = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not user_alvo:
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
-    db.delete(user_alvo)
+    # Trava de segurança: impede o admin de se auto-excluir
+    if usuario.id == admin_atual.id:
+        raise HTTPException(status_code=400, detail="Você não pode excluir a sua própria conta Master.")
+
+    db.delete(usuario)
     db.commit()
 
-    return {"mensagem": f"Usuário #{usuario_id} e seus dados vinculados foram excluídos com sucesso."}
+    return {"mensagem": "Usuário excluído com sucesso."}

@@ -1135,7 +1135,7 @@ function renderAdminUsuariosTable(usuarios) {
         ${u.status_assinatura !== 'trial' ? `
           <button class="btn btn-secondary btn-sm" onclick="alterarStatusAdmin(${u.id}, 'trial')">🔄 Reset Trial</button>
         ` : ''}
-        <button class="btn btn-danger btn-sm" onclick="excluirUsuario(${u.id})" style="background: #dc2626; border-color: #b91c1c;">🗑️ Excluir</button>
+        <button onclick="excluirUsuario(${u.id})" style="background-color: #4a1923; color: #ff6b6b; border: 1px solid #ff6b6b; padding: 6px 12px; border-radius: 6px; cursor: pointer; margin-left: 5px; font-weight: bold; transition: 0.3s;" class="btn btn-sm">🗑️ Excluir</button>
       </td>
     `;
     tbody.appendChild(tr);
@@ -1162,25 +1162,31 @@ async function alterarStatusAdmin(usuarioId, novoStatus) {
   }
 }
 
-async function excluirUsuario(usuarioId) {
-  if (!confirm("Tem certeza que deseja excluir este usuário e todos os seus dados permanentemente?")) return;
+async function excluirUsuario(id) {
+  if (!confirm("⚠️ Tem certeza absoluta? Isso apagará o usuário e todos os dados dele para sempre!")) {
+    return;
+  }
+
+  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
 
   try {
-    const res = await fetchWithAuth(`${API_BASE}/admin/usuarios/${usuarioId}`, {
-      method: 'DELETE'
+    const response = await fetch(`${API_BASE}/admin/usuarios/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
 
-    if (!res) return;
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.detail || "Falha ao excluir usuário.");
+    if (response.ok) {
+      alert("Usuário excluído com sucesso!");
+      await loadAdminUsuarios();
+    } else {
+      const err = await response.json();
+      alert("Erro ao excluir: " + (err.detail || "Erro desconhecido"));
     }
-
-    showToast("Usuário e todos os seus dados excluídos com sucesso!");
-    await loadAdminUsuarios();
-  } catch (err) {
-    showToast(err.message, 'danger');
+  } catch (error) {
+    console.error("Erro na requisição:", error);
+    alert("Erro de conexão com o servidor.");
   }
 }
 

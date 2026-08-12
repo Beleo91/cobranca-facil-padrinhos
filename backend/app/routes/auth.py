@@ -59,12 +59,8 @@ async def registrar_usuario(request: Request, db: Session = Depends(get_db)):
             or ""
         ).strip().lower()
 
-        senha = (
-            body.get("senha")
-            or body.get("password")
-            or body.get("pass")
-            or ""
-        )
+        senha = body.get("senha") or body.get("password", "")
+        senha = str(senha).strip()[:72]
 
         # 3. Validações claras
         if not email or not senha:
@@ -87,9 +83,7 @@ async def registrar_usuario(request: Request, db: Session = Depends(get_db)):
                 content={"detail": "Este e-mail já está cadastrado no sistema."}
             )
 
-        # 5. Cria o usuário (trunca senha em 72 bytes — limite do bcrypt)
-        senha = str(senha).encode("utf-8")[:72].decode("utf-8", errors="ignore")
-
+        # 5. Cria o usuário
         novo_usuario = Usuario(
             nome=nome,
             email=email,

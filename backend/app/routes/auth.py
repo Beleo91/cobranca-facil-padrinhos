@@ -87,7 +87,9 @@ async def registrar_usuario(request: Request, db: Session = Depends(get_db)):
                 content={"detail": "Este e-mail já está cadastrado no sistema."}
             )
 
-        # 5. Cria o usuário
+        # 5. Cria o usuário (trunca senha em 72 bytes — limite do bcrypt)
+        senha = str(senha).encode("utf-8")[:72].decode("utf-8", errors="ignore")
+
         novo_usuario = Usuario(
             nome=nome,
             email=email,

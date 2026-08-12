@@ -22,13 +22,16 @@ security = HTTPBearer(auto_error=False)
 
 
 def tratar_senha(senha: str) -> str:
-    """Trunca a senha corretamente por BYTES (limite do bcrypt = 72 bytes)."""
-    s = str(senha or "")
-    # Truncamento seguro por bytes UTF-8
-    return s.encode("utf-8")[:72].decode("utf-8", errors="ignore")
+    """Trunca SEMPRE por bytes + força string limpa."""
+    if not senha:
+        return ""
+    s = str(senha).encode("utf-8")[:72].decode("utf-8", errors="ignore")
+    return s.strip()
 
 def criar_senha_hash(senha: str) -> str:
-    return pwd_context.hash(tratar_senha(senha))
+    senha_limpa = tratar_senha(senha)
+    print(f"[DEBUG HASH] tamanho bytes = {len(senha_limpa.encode('utf-8'))} | valor = {repr(senha_limpa)}")
+    return pwd_context.hash(senha_limpa)
 
 def verificar_senha(senha_plana: str, senha_hash: str) -> bool:
     return pwd_context.verify(tratar_senha(senha_plana), senha_hash)
